@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 新闻日报</title>
+    <link rel="stylesheet" href="style.css?v=22">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🤖 AI<br>新闻日报</h1>
+                <p class="sidebar-sub">每日精选全球 AI 热门资讯</p>
+            </div>
+
+            <nav class="source-nav">
+                <div class="source-group-label">每日必看</div>
+                <button class="source-btn active" data-source="all">
+                    <span class="source-icon">📋</span>
+                    <span class="source-name">每日精选</span>
+                    <span class="source-count" id="count-all">0</span>
+                </button>
+                <button class="source-btn" data-source="pitfall">
+                    <span class="source-icon">⚠️</span>
+                    <span class="source-name">GitHub 避坑</span>
+                    <span class="source-count" id="count-pitfall">0</span>
+                </button>
+
+                <div class="source-group-label">其他</div>
+                <button class="source-btn" data-source="X">
+                    <span class="source-icon">🐦</span>
+                    <span class="source-name">X 热门</span>
+                    <span class="source-count" id="count-X">0</span>
+                </button>
+                <button class="source-btn" data-source="GitHub">
+                    <span class="source-icon">🐙</span>
+                    <span class="source-name">GitHub 趋势</span>
+                    <span class="source-count" id="count-GitHub">0</span>
+                </button>
+                <button class="source-btn" data-source="Reddit">
+                    <span class="source-icon">🔴</span>
+                    <span class="source-name">Reddit</span>
+                    <span class="source-count" id="count-Reddit">0</span>
+                </button>
+                <button class="source-btn" data-source="ProductHunt">
+                    <span class="source-icon">🚀</span>
+                    <span class="source-name">ProductHunt</span>
+                    <span class="source-count" id="count-ProductHunt">0</span>
+                </button>
+                <button class="source-btn" data-source="量子位">
+                    <span class="source-icon">🇨🇳</span>
+                    <span class="source-name">量子位</span>
+                    <span class="source-count" id="count-量子位">0</span>
+                </button>
+                <button class="source-btn" data-source="HackerNews">
+                    <span class="source-icon">🔶</span>
+                    <span class="source-name">HackerNews</span>
+                    <span class="source-count" id="count-HackerNews">0</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <p>数据来源：X / Reddit / ProductHunt / HN / GitHub / 量子位</p>
+            </div>
+        </aside>
+
+        <!-- 移动端菜单按钮 -->
+        <button class="menu-toggle" id="menuToggle">☰</button>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 列表视图 -->
+            <div id="listView">
+                <!-- 顶部控制栏 -->
+                <div class="top-bar">
+                    <div class="date-picker">
+                        <label for="dateSelect">📅</label>
+                        <select id="dateSelect"></select>
+                        <button id="refreshBtn">🔄</button>
+                    </div>
+                    <div class="filters-row" id="filtersRow">
+                        <div class="filters">
+                            <button class="filter-btn active" data-filter="all">全部</button>
+                            <button class="filter-btn" data-filter="模型发布">模型发布</button>
+                            <button class="filter-btn" data-filter="产品更新">产品更新</button>
+                            <button class="filter-btn" data-filter="技术论文">技术论文</button>
+                            <button class="filter-btn" data-filter="行业观点">行业观点</button>
+                            <button class="filter-btn" data-filter="投资融资">投资融资</button>
+                            <button class="filter-btn" data-filter="开源工具">开源工具</button>
+                        </div>
+                        <div class="importance-filter">
+                            <button class="imp-btn active" data-imp="all">全部</button>
+                            <button class="imp-btn" data-imp="重磅">🔴</button>
+                            <button class="imp-btn" data-imp="值得关注">🟡</button>
+                            <button class="imp-btn" data-imp="了解即可">🟢</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 页面标题 -->
+                <div class="page-header">
+                    <h2 id="pageTitle">📋 综合精选</h2>
+                    <p id="pageDesc">基于多源数据的热度评分与聚类去重，精选每日 Top 资讯</p>
+                    <span class="stat-badge" id="statCount">共 0 条</span>
+                </div>
+
+                <!-- 综合页面 Overview -->
+                <section class="overview-card" id="overviewSection">
+                    <h3>📋 今日 AI 速览</h3>
+                    <p id="overviewText">加载中...</p>
+                </section>
+
+                <!-- F4：GitHub 避坑（仅 GitHub 避坑选项卡显示） -->
+                <section id="pitfallSection" class="pitfall-section" style="display:none">
+                    <div class="pitfall-header">
+                        <h3>⚠️ GitHub 避坑</h3>
+                        <p class="pitfall-sub">今日 GitHub 上的爆款，先看清楚再决定要不要折腾</p>
+                    </div>
+                    <div id="pitfallList" class="pitfall-list"></div>
+                    <button id="pitfallExpand" class="pitfall-expand" style="display:none">展开全部 ▾</button>
+                </section>
+
+                <!-- 判定依据说明（仅 GitHub 避坑选项卡显示） -->
+                <section id="pitfallCriteria" class="pitfall-criteria" style="display:none">
+                    <div class="pitfall-criteria-head">
+                        <h3>🧭 这些标签是怎么判出来的？</h3>
+                        <p class="pitfall-criteria-sub">规则按优先级从上往下匹配，命中即停。阈值会随观察持续微调。</p>
+                    </div>
+                    <div class="pitfall-criteria-grid" id="pitfallCriteriaGrid"></div>
+                </section>
+
+                <!-- 新闻列表 -->
+                <section id="newsList" class="news-list">
+                    <!-- 卡片由 JS 渲染 -->
+                </section>
+
+                <!-- GitHub 术语小词典（首页底部常驻折叠区） -->
+                <details class="glossary-block" id="glossaryHome">
+                    <summary>📖 看不懂这些数字？(GitHub 术语小词典)</summary>
+                    <div class="glossary-body" id="glossaryBodyHome"></div>
+                </details>
+
+                <footer class="main-footer">
+                    <p>生成时间：<span id="genTime">-</span></p>
+                </footer>
+            </div>
+
+            <!-- 详情页视图 -->
+            <div id="detailView" class="detail-view" style="display: none;">
+                <div class="detail-top">
+                    <button class="detail-back" id="detailBack">← 返回</button>
+                </div>
+                <div id="detailBody" class="detail-body"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 移动端遮罩 -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <script src="app.js?v=22"></script>
+</body>
+</html>

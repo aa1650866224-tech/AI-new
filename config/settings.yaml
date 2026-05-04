@@ -1,0 +1,86 @@
+# AI新闻助手主配置
+deepseek:
+  api_key: ${DEEPSEEK_API_KEY}
+  api_base: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
+
+# X API (Twitter)
+x_api:
+  bearer_token: ${X_BEARER_TOKEN}
+  max_results_per_query: 50
+  min_likes: 30
+  min_retweets: 5
+
+# Hacker News
+hackernews:
+  min_score: 50
+  max_results: 30
+
+# Reddit
+reddit:
+  subreddits:
+    - "MachineLearning"
+    - "LocalLLaMA"
+    - "artificial"
+  max_results_per_sub: 15
+  min_score: 10
+
+# RSS 订阅源（通用采集器）
+rss:
+  feeds:
+    - name: "量子位"
+      url: "https://www.qbitai.com/feed"
+  max_per_feed: 10
+
+# Product Hunt
+producthunt:
+  token: ${PRODUCTHUNT_TOKEN}
+  max_results: 20
+  min_votes: 20
+  ai_topics:
+    - "artificial-intelligence"
+    - "machine-learning"
+    - "ai"
+    - "chatgpt"
+    - "llm"
+    - "open-source"
+    - "developer-tools"
+
+# GitHub
+github:
+  token: ${GH_PAT}
+  trending_count: 15
+  # 抓取哪些语言的 Trending，空字符串表示全部语言
+  # 可选值: "", "python", "javascript", "typescript", "go", "rust", "c++" 等
+  trending_languages:
+    - ""
+  tracked_repos:
+    - "openai/openai-python"
+    - "meta-llama/llama"
+    - "microsoft/Phi-3CookBook"
+    - "google/gemma.cpp"
+    - "anthropics/anthropic-cookbook"
+  check_releases: true
+
+# 热度评分权重
+ranking:
+  like_weight: 1.0
+  retweet_weight: 2.0
+  reply_weight: 1.5
+  star_weight: 1.0
+  fork_weight: 1.5
+  follower_threshold: 100000
+  follower_bonus: 1.2
+  decay_hours: 12
+  decay_rate: 0.02
+  max_per_cluster: 2
+  daily_top_n: 15
+
+# 推送与存储
+storage:
+  data_dir: "data/daily"
+  web_data_dir: "web/data"
+
+# 定时任务 (GitHub Actions 不需要本地定时，保留配置供参考)
+schedule:
+  daily_digest: "0 1 * * *"

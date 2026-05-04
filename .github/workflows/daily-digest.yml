@@ -44,15 +44,7 @@ jobs:
           python src/main.py
 
       - name: Generate index
-        run: |
-          python -c "
-import json, os
-from pathlib import Path
-files = sorted([f.stem for f in Path('web/data').glob('*.json') if f.stem != 'index'], reverse=True)
-with open('web/data/index.json', 'w') as f:
-    json.dump(files, f)
-print('Dates indexed:', files[:5])
-"
+        run: python scripts/build_index.py
 
       - name: Commit and push data
         run: |

@@ -716,6 +716,10 @@ body {
 .pitfall-criteria-item.verdict-hype_only  { border-left-color: #f39c12; }
 .pitfall-criteria-item.verdict-marketing  { border-left-color: #e74c3c; }
 .pitfall-criteria-item.verdict-abandoned  { border-left-color: #888; }
+.pitfall-criteria-item.is-current {
+    box-shadow: 0 0 0 2px #1a1a2e, 0 4px 14px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
 .pitfall-criteria-label {
     font-size: 0.95rem;
     font-weight: 700;
@@ -1118,4 +1122,58 @@ p .article-img {
     }
     .article-h2 { font-size: 1.2rem; }
     .article-h3 { font-size: 1.08rem; }
+}
+
+/* ===== F8：GitHub 雷达子选项卡 ===== */
+.verdict-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0 18px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e6e6ec;
+}
+.verdict-tab {
+    padding: 6px 14px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    border-radius: 18px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #555;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.verdict-tab:hover {
+    border-color: #1a1a2e;
+    color: #1a1a2e;
+}
+.verdict-tab.active {
+    background: #1a1a2e;
+    color: #fff;
+    border-color: #1a1a2e;
+}
+.verdict-tab-count {
+    display: inline-block;
+    min-width: 20px;
+    padding: 0 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    color: #888;
+    background: #f0f0f3;
+    border-radius: 9px;
+}
+.verdict-tab.active .verdict-tab-count {
+    color: #1a1a2e;
+    background: #ffe089;
+}
+@media (max-width: 640px) {
+    .verdict-tab {
+        font-size: 0.78rem;
+        padding: 5px 10px;
+    }
 }

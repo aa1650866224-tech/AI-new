@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 新闻日报</title>
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
     <div class="app-layout">
@@ -22,10 +22,10 @@
                     <span class="source-name">每日精选</span>
                     <span class="source-count" id="count-all">0</span>
                 </button>
-                <button class="source-btn" data-source="pitfall">
-                    <span class="source-icon">⚠️</span>
-                    <span class="source-name">GitHub 避坑</span>
-                    <span class="source-count" id="count-pitfall">0</span>
+                <button class="source-btn" data-source="GitHub">
+                    <span class="source-icon">🐙</span>
+                    <span class="source-name">GitHub 雷达</span>
+                    <span class="source-count" id="count-GitHub">0</span>
                 </button>
 
                 <div class="source-group-label">其他</div>
@@ -33,11 +33,6 @@
                     <span class="source-icon">🐦</span>
                     <span class="source-name">X 热门</span>
                     <span class="source-count" id="count-X">0</span>
-                </button>
-                <button class="source-btn" data-source="GitHub">
-                    <span class="source-icon">🐙</span>
-                    <span class="source-name">GitHub 趋势</span>
-                    <span class="source-count" id="count-GitHub">0</span>
                 </button>
                 <button class="source-btn" data-source="Reddit">
                     <span class="source-icon">🔴</span>
@@ -112,17 +107,7 @@
                     <p id="overviewText">加载中...</p>
                 </section>
 
-                <!-- F4：GitHub 避坑（仅 GitHub 避坑选项卡显示） -->
-                <section id="pitfallSection" class="pitfall-section" style="display:none">
-                    <div class="pitfall-header">
-                        <h3>⚠️ GitHub 避坑</h3>
-                        <p class="pitfall-sub">今日 GitHub 上的爆款，先看清楚再决定要不要折腾</p>
-                    </div>
-                    <div id="pitfallList" class="pitfall-list"></div>
-                    <button id="pitfallExpand" class="pitfall-expand" style="display:none">展开全部 ▾</button>
-                </section>
-
-                <!-- 判定依据说明（仅 GitHub 避坑选项卡显示） -->
+                <!-- 注：ID/类名 pitfallCriteria 沿用自 V1，避免追改 web/style.css。语义已变为"GitHub 雷达·4 档判据卡"。 -->
                 <section id="pitfallCriteria" class="pitfall-criteria" style="display:none">
                     <div class="pitfall-criteria-head">
                         <h3>🧭 这些标签是怎么判出来的？</h3>
@@ -130,6 +115,15 @@
                     </div>
                     <div class="pitfall-criteria-grid" id="pitfallCriteriaGrid"></div>
                 </section>
+
+                <!-- F8：GitHub 雷达子选项卡（4 verdict + 1 release） -->
+                <div id="verdictTabs" class="verdict-tabs" style="display:none">
+                    <button class="verdict-tab active" data-verdict="true_use">🟢 真在用 <span class="verdict-tab-count">0</span></button>
+                    <button class="verdict-tab" data-verdict="hype_only">🟡 看的多用的少 <span class="verdict-tab-count">0</span></button>
+                    <button class="verdict-tab" data-verdict="marketing">🔴 营销味重 <span class="verdict-tab-count">0</span></button>
+                    <button class="verdict-tab" data-verdict="abandoned">⚫ 已停摆 <span class="verdict-tab-count">0</span></button>
+                    <button class="verdict-tab" data-verdict="release">📦 Release <span class="verdict-tab-count">0</span></button>
+                </div>
 
                 <!-- 新闻列表 -->
                 <section id="newsList" class="news-list">
@@ -160,6 +154,6 @@
     <!-- 移动端遮罩 -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=23"></script>
 </body>
 </html>

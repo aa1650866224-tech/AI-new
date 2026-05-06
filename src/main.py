@@ -24,7 +24,11 @@ from src.processors.summarize import Summarizer
 from src.processors.article_fetcher import enrich_items
 from src.processors.translator import Translator
 from src.processors.github_verdict import annotate as annotate_github_verdict
+from src.processors import github_snapshot
 from src.storage.json_storage import JsonStorage
+
+
+SNAPSHOT_PATH_ABS = str(Path(__file__).resolve().parent.parent / "data" / "github_snapshots.jsonl")
 
 
 def load_config() -> dict:
@@ -90,7 +94,9 @@ def main():
     items = enrich_items(items)
 
     # 4.5 GitHub 避坑标签判定（在 _readme_hint 还在 item 上时跑，让标签也能进 summarize prompt）
-    items = annotate_github_verdict(items)
+    # F6：先加载最近 7 天历史快照，主判据（marketing 路径 A）需要它
+    history = github_snapshot.load_recent_snapshots(SNAPSHOT_PATH_ABS, days=7)
+    items = annotate_github_verdict(items, history=history)
 
     # 5. 翻译英文正文为中文（长文分段翻译）
     print(f"[{total_steps + 2}/{total_steps + 2}] Translating articles to Chinese...")
@@ -184,6 +190,16 @@ def main():
         print(f"Updated index.json with {len(files)} dates.")
     except Exception as e:
         print(f"Index update warning: {e}")
+
+    # 13. F6：追加今日 GitHub trending 快照 + 清理 90 天前旧记录
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    github_items_for_snapshot = [
+        it for it in items
+        if it.get("source") == "GitHub" and not (it.get("id") or "").startswith("gh_rel_")
+    ]
+    github_snapshot.append_today_snapshot(SNAPSHOT_PATH_ABS, github_items_for_snapshot, today_str)
+    removed = github_snapshot.prune_old_snapshots(SNAPSHOT_PATH_ABS, max_days=90)
+    print(f"[Snapshot] appended {len(github_items_for_snapshot)} items, pruned {removed} old rows")
 
     print("Done.")
 

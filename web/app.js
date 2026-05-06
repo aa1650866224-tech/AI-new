@@ -2,6 +2,7 @@ let currentData = null;
 let currentSource = 'all';
 let currentFilter = 'all';
 let currentImp = 'all';
+let currentVerdict = 'true_use';   // F8：GitHub 雷达子 tab 选中状态
 let currentDetailItem = null;
 
 const SOURCE_META = {
@@ -9,10 +10,9 @@ const SOURCE_META = {
     X: { title: '🐦 X 热门', desc: '来自 X (Twitter) 的 AI 相关热门推文' },
     Reddit: { title: '🔴 Reddit 热帖', desc: 'r/MachineLearning、r/LocalLLaMA 等社区的 AI 热门讨论' },
     ProductHunt: { title: '🚀 ProductHunt', desc: 'ProductHunt 上今日热门的 AI 产品与工具' },
-    GitHub: { title: '🐙 GitHub 趋势', desc: 'GitHub 上 AI 相关的 Trending 仓库与最新 Release' },
+    GitHub: { title: '🐙 GitHub 雷达', desc: '按"开发者真在用 / 看的多用的少 / 营销味重 / 已停摆"四档分类的今日 GitHub 项目' },
     HackerNews: { title: '🔶 HackerNews 热榜', desc: 'HackerNews 上与 AI 相关的高分讨论帖' },
-    '量子位': { title: '🇨🇳 量子位', desc: '国内头部 AI 科技媒体，覆盖产业动态与技术前沿' },
-    pitfall: { title: '⚠️ GitHub 避坑', desc: '今日 GitHub 上的爆款，先看清楚再决定要不要折腾' }
+    '量子位': { title: '🇨🇳 量子位', desc: '国内头部 AI 科技媒体，覆盖产业动态与技术前沿' }
 };
 
 /* ===== GitHub 术语小词典（F3） =====
@@ -117,7 +117,7 @@ async function loadDate(dateStr) {
 function updateSourceCounts() {
     if (!currentData) return;
     const bySource = currentData.by_source || {};
-    
+
     // 综合
     document.getElementById('count-all').textContent = currentData.count || 0;
     // 各来源
@@ -126,9 +126,6 @@ function updateSourceCounts() {
         const el = document.getElementById(`count-${src}`);
         if (el) el.textContent = count;
     });
-    // GitHub 避坑：复用 GitHub 数据
-    const pitfallEl = document.getElementById('count-pitfall');
-    if (pitfallEl) pitfallEl.textContent = (bySource.GitHub || []).length;
 }
 
 const IMPORTANCE_ORDER = { '重磅': 0, '值得关注': 1, '了解即可': 2 };
@@ -139,7 +136,22 @@ function getItemsToRender() {
         // 综合精选保持后端的重要性分层（重磅 → 值得关注 → 了解即可）
         return (currentData.items || []).slice();
     }
-    // 单个来源选项卡：按重要性分层（重磅→值得关注→了解即可），同层内按热度降序
+    // F8：GitHub 雷达——按 currentVerdict 子 tab 切片
+    if (currentSource === 'GitHub') {
+        const all = currentData.by_source?.GitHub || [];
+        let items;
+        if (currentVerdict === 'release') {
+            items = all.filter(it => (it.id || '').startsWith('gh_rel_'));
+        } else {
+            // 4 个 verdict tab：只看 trending（排除 release，再按 verdict_tag 过滤）
+            items = all.filter(it =>
+                !(it.id || '').startsWith('gh_rel_') && it.verdict_tag === currentVerdict
+            );
+        }
+        // V1 §0.5 已确定 GitHub 不再用 importance 分层，子 tab 内只按 heat_score 降序
+        return items.slice().sort((a, b) => (b.heat_score || 0) - (a.heat_score || 0));
+    }
+    // 其他来源：按重要性分层（重磅→值得关注→了解即可），同层内按热度降序
     const bySource = currentData.by_source || {};
     const items = bySource[currentSource] || [];
     return items.slice().sort((a, b) => {
@@ -169,26 +181,14 @@ function render() {
         overviewSection.style.display = 'none';
     }
 
-    // GitHub 避坑模块（仅 pitfall 选项卡显示）
-    renderPitfallSection();
+    // F8：GitHub 雷达——子 tab + 4 档判据卡
+    renderVerdictTabs();
     renderPitfallCriteria();
 
-    // pitfall 选项卡：隐藏分类/重要性筛选 + 隐藏新闻列表 + 隐藏首页词典（避坑卡片自带 ⓘ）
+    // GitHub 雷达：隐藏分类/重要性筛选（用 verdict 子 tab 替代）
     const filtersRow = document.getElementById('filtersRow');
-    const newsListEl = document.getElementById('newsList');
-    const glossaryHome = document.getElementById('glossaryHome');
-    if (currentSource === 'pitfall') {
-        if (filtersRow) filtersRow.style.display = 'none';
-        if (newsListEl) newsListEl.style.display = 'none';
-        if (glossaryHome) glossaryHome.style.display = 'none';
-        const ghCount = (currentData.by_source?.GitHub || []).length;
-        document.getElementById('statCount').textContent = `共 ${ghCount} 条`;
-        document.getElementById('genTime').textContent = currentData.generated_at ? currentData.generated_at.slice(0, 16).replace('T', ' ') : '-';
-        return;
-    } else {
-        if (filtersRow) filtersRow.style.display = '';
-        if (newsListEl) newsListEl.style.display = '';
-        if (glossaryHome) glossaryHome.style.display = '';
+    if (filtersRow) {
+        filtersRow.style.display = (currentSource === 'GitHub') ? 'none' : '';
     }
 
     document.getElementById('genTime').textContent = currentData.generated_at ? currentData.generated_at.slice(0, 16).replace('T', ' ') : '-';
@@ -208,9 +208,15 @@ function render() {
     document.getElementById('statCount').textContent = `共 ${filtered.length} 条`;
 
     if (filtered.length === 0) {
-        const emptyMsg = items.length === 0 
-            ? '该来源暂无数据。可能是 API 限额用完或当日无匹配内容。' 
-            : '当前筛选条件下无匹配内容。';
+        let emptyMsg;
+        if (currentSource === 'GitHub') {
+            // F8：子 tab 空状态——保持 tab 可见，仅列表区文案
+            emptyMsg = '今日没有此类项目';
+        } else if (items.length === 0) {
+            emptyMsg = '该来源暂无数据。可能是 API 限额用完或当日无匹配内容。';
+        } else {
+            emptyMsg = '当前筛选条件下无匹配内容。';
+        }
         listEl.innerHTML = `<p class="empty-state">${emptyMsg}</p>`;
         return;
     }
@@ -480,40 +486,7 @@ function renderVerdictBlock(item) {
     </div>`;
 }
 
-// 首页避坑模块：单张紧凑卡片（按钮 → 详情页）
-function renderPitfallCard(item, idx) {
-    const tag = item.verdict_tag || 'true_use';
-    const label = item.verdict_label || '🟢 开发者真在用';
-    const repoName = (item.id || '').replace(/^gh_/, '').replace('_', '/');
-    const stars = item.stars ? `${item.stars.toLocaleString()}` : '0';
-    const who = item.verdict?.who_should_care || item.chinese_summary || '';
-
-    const card = document.createElement('div');
-    card.className = `pitfall-card verdict-${tag}`;
-    card.innerHTML = `
-        <div class="pitfall-card-head">
-            <span class="badge verdict-${tag}">${escapeHtml(label)}</span>
-            <span class="pitfall-stars">⭐ ${stars}${glossaryIcon('star')}</span>
-        </div>
-        <div class="pitfall-repo">${escapeHtml(repoName)}</div>
-        <div class="pitfall-title">${escapeHtml(item.chinese_title || item.title)}</div>
-        <div class="pitfall-care-label">该不该 care：</div>
-        <div class="pitfall-care">${escapeHtml(who)}</div>
-        <div class="pitfall-card-footer">
-            <button class="pitfall-detail-btn">查看完整祛魅分析 →</button>
-        </div>
-    `;
-    card.querySelector('.pitfall-detail-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        showDetailPage(item);
-    });
-    return card;
-}
-
-// 排序优先级：marketing > hype_only > abandoned > true_use（红黄优先）
-const VERDICT_ORDER = { marketing: 0, hype_only: 1, abandoned: 2, true_use: 3 };
-
-// 4 档判定依据（与 src/processors/github_verdict.py 阈值同步）
+// 4 档判定依据（与 src/processors/github_verdict.py 阈值同步，F7 已校准）
 const PITFALL_CRITERIA = [
     {
         tag: 'true_use',
@@ -527,14 +500,14 @@ const PITFALL_CRITERIA = [
         label: '🟡 看的人多用的人少',
         explain: '星很多，但提 issue / fork 的人少',
         analogy: '像网红店打卡照很多，回头客没几个',
-        rule: 'stars > 500 且 stars / forks > 100'
+        rule: 'stars > 1000 且 stars / forks > 30'
     },
     {
         tag: 'marketing',
         label: '🔴 营销味重',
-        explain: '星数短期暴涨 + README 充斥夸张话术',
+        explain: '星数短期暴涨 + 提问题的人少',
         analogy: '像短视频里「3 天瘦 10 斤」那种话术',
-        rule: '今日新增 stars ≥ 500 且 stars / issues > 200，或 README 命中 ≥ 3 个营销词（revolutionary、state-of-the-art、all you need、颠覆、碾压、完爆 等）'
+        rule: '7 天新增 stars ≥ 3000 且 issues 不到新增 stars 的 5%（每涨 1000 颗 star 提问的人不到 50 个 → 大概率刷的）；或 README 命中 ≥ 4 个营销词。冷启动期用今日新增 stars ≥ 1500 近似。'
     },
     {
         tag: 'abandoned',
@@ -545,60 +518,57 @@ const PITFALL_CRITERIA = [
     }
 ];
 
+// 4 卡并列展示判据（release 子 tab 隐藏）；当前选中的 verdict 加深色阴影高亮
 function renderPitfallCriteria() {
     const section = document.getElementById('pitfallCriteria');
     const grid = document.getElementById('pitfallCriteriaGrid');
     if (!section || !grid) return;
 
-    if (currentSource !== 'pitfall') {
+    if (currentSource !== 'GitHub' || currentVerdict === 'release') {
         section.style.display = 'none';
         return;
     }
 
     section.style.display = 'block';
-    grid.innerHTML = PITFALL_CRITERIA.map(c => `
-        <div class="pitfall-criteria-item verdict-${c.tag}">
+    grid.innerHTML = PITFALL_CRITERIA.map(c => {
+        const activeCls = c.tag === currentVerdict ? ' is-current' : '';
+        return `
+        <div class="pitfall-criteria-item verdict-${c.tag}${activeCls}">
             <div class="pitfall-criteria-label">${escapeHtml(c.label)}</div>
             <div class="pitfall-criteria-explain">${escapeHtml(c.explain)}</div>
             <div class="pitfall-criteria-analogy">${escapeHtml(c.analogy)}</div>
             <div class="pitfall-criteria-rule-label">判据</div>
             <div class="pitfall-criteria-rule">${escapeHtml(c.rule)}</div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
-let pitfallExpanded = false;
-
-function renderPitfallSection() {
-    const section = document.getElementById('pitfallSection');
-    const listEl = document.getElementById('pitfallList');
-    const expandBtn = document.getElementById('pitfallExpand');
-    if (!section || !listEl) return;
-
-    // 仅在 GitHub 避坑选项卡显示
-    if (currentSource !== 'pitfall') {
-        section.style.display = 'none';
+// F8：渲染 GitHub 雷达 5 个子 tab + 计数
+function renderVerdictTabs() {
+    const tabsEl = document.getElementById('verdictTabs');
+    if (!tabsEl) return;
+    if (currentSource !== 'GitHub') {
+        tabsEl.style.display = 'none';
         return;
     }
+    tabsEl.style.display = '';
 
-    const ghItems = (currentData?.by_source?.GitHub || []).slice();
-    if (ghItems.length === 0) {
-        section.style.display = 'none';
-        return;
-    }
+    const all = currentData?.by_source?.GitHub || [];
+    const trending = all.filter(it => !(it.id || '').startsWith('gh_rel_'));
+    const releases = all.filter(it => (it.id || '').startsWith('gh_rel_'));
 
-    // 排序：红黄标签优先
-    ghItems.sort((a, b) => {
-        const ai = VERDICT_ORDER[a.verdict_tag] ?? 99;
-        const bi = VERDICT_ORDER[b.verdict_tag] ?? 99;
-        if (ai !== bi) return ai - bi;
-        return (b.heat_score || 0) - (a.heat_score || 0);
+    tabsEl.querySelectorAll('.verdict-tab').forEach(btn => {
+        const tag = btn.dataset.verdict;
+        let n;
+        if (tag === 'release') {
+            n = releases.length;
+        } else {
+            n = trending.filter(it => it.verdict_tag === tag).length;
+        }
+        const cnt = btn.querySelector('.verdict-tab-count');
+        if (cnt) cnt.textContent = n;
+        btn.classList.toggle('active', tag === currentVerdict);
     });
-
-    section.style.display = 'block';
-    listEl.innerHTML = '';
-    ghItems.forEach((it, idx) => listEl.appendChild(renderPitfallCard(it, idx)));
-    expandBtn.style.display = 'none';
 }
 
 /* ===== 详情页 ===== */
@@ -801,14 +771,13 @@ async function init() {
     // F3：填充首页底部 GitHub 术语词典
     renderGlossaryBody();
 
-    // F4：避坑模块「展开全部」按钮
-    const pitfallExpand = document.getElementById('pitfallExpand');
-    if (pitfallExpand) {
-        pitfallExpand.addEventListener('click', () => {
-            pitfallExpanded = !pitfallExpanded;
-            renderPitfallSection();
+    // F8：GitHub 雷达子 tab 点击切换
+    document.querySelectorAll('#verdictTabs .verdict-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentVerdict = btn.dataset.verdict;
+            render();
         });
-    }
+    });
 
     // 详情页返回按钮
     document.getElementById('detailBack').addEventListener('click', hideDetailPage);

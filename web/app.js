@@ -500,7 +500,7 @@ const PITFALL_CRITERIA = [
         label: '🟡 看的人多用的人少',
         explain: '星很多，但提 issue / fork 的人少',
         analogy: '像网红店打卡照很多，回头客没几个',
-        rule: 'stars > 1000 且 stars / forks > 30'
+        rule: 'stars > 1000 且 stars / forks > 20'
     },
     {
         tag: 'marketing',

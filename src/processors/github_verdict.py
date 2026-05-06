@@ -76,7 +76,10 @@ _MARKETING_PHRASE_HITS = 4        # 旧 V1 是 3，本期收紧到 4
 
 # hype_only（按真实分布 p75~p90 校准）
 _HYPE_MIN_STARS = 1000            # 旧 V1 是 500
-_HYPE_STAR_FORK_RATIO = 30        # 旧 V1 是 100（实际中位数才 11，原阈值过严）
+_HYPE_STAR_FORK_RATIO = 20        # 旧 V1 是 100 → V2 是 30 → 现在 20。
+                                  # 依据：Awesome Agents/Dagster 文献给出健康项目 stars/forks 在 5~10，
+                                  # CMU StarScout 论文 Union Labs 假星案例 stars/forks ≈ 19，
+                                  # 所以 20 是有数据支撑的"嫌疑线"，再低会误伤正常项目。
 
 # 主判据需要的快照年龄下限——不足 7 天的窗口直接退回路径 B，
 # 否则"3 天涨 3000"会比"7 天涨 3000"更难触发（语义不一致）

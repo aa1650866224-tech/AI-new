@@ -1,6 +1,6 @@
 # 🤖 AI 新闻日报助手
 
-每日自动从 X(Twitter)、Hacker News、GitHub 采集热门 AI 资讯，经 DeepSeek AI 深度处理后，生成一份中文日报网页。
+本地手动从 X(Twitter)、Hacker News、GitHub 采集热门 AI 资讯，经 DeepSeek AI 深度处理后，生成一份中文日报网页。
 
 ## 功能特性
 
@@ -8,7 +8,6 @@
 - **智能筛选**：热度评分算法 + 去重 + 多样性保护，每日精选 Top 15
 - **AI 深度处理**：DeepSeek 生成中文标题、摘要、分类、重要性定级
 - **Web 看板**：支持按日期切换、分类筛选、重要性筛选、历史回溯
-- **零成本部署**：GitHub Actions + GitHub Pages，完全免费
 
 ## 项目结构
 
@@ -22,14 +21,12 @@
 │   ├── processors/         # 去重、评分、AI 摘要
 │   ├── storage/            # JSON 数据存储
 │   └── main.py             # 主入口
-├── web/                    # 前端看板（GitHub Pages 部署）
+├── web/                    # 前端看板
 │   ├── index.html
 │   ├── style.css
 │   ├── app.js
 │   └── data/               # 日报 JSON 数据
-├── data/daily/             # 本地数据备份
-└── .github/workflows/
-    └── daily-digest.yml    # 自动定时任务
+└── data/daily/             # 本地数据备份
 ```
 
 ## 快速开始
@@ -48,7 +45,7 @@ pip install -r requirements.txt
 ```bash
 DEEPSEEK_API_KEY=sk-your-deepseek-key
 X_BEARER_TOKEN=your-x-bearer-token
-GH_PAT=your-github-token  # 可选，提高 API 限流（不要用 GITHUB_TOKEN 前缀）
+GH_PAT=your-github-token  # 可选，提高 GitHub API 限流
 ```
 
 ### 3. 本地运行一次
@@ -68,37 +65,6 @@ python src/main.py
 > cd web && python -m http.server 8080
 > # 然后访问 http://localhost:8080
 > ```
-
-## GitHub 部署（推荐）
-
-### 步骤 1：创建 GitHub 仓库
-
-将本项目 push 到你的 GitHub 仓库。
-
-### 步骤 2：设置 Secrets
-
-进入仓库 **Settings -> Secrets and variables -> Actions -> New repository secret**，添加：
-
-| Secret 名称 | 说明 |
-|------------|------|
-| `DEEPSEEK_API_KEY` | DeepSeek API Key |
-| `X_BEARER_TOKEN` | X API Bearer Token（在 https://developer.x.com 申请 Free 权限） |
-| `GH_PAT` | GitHub Personal Access Token（可选，不要用 `GITHUB_TOKEN` 前缀） |
-
-### 步骤 3：启用 GitHub Pages
-
-进入仓库 **Settings -> Pages**：
-- **Source** 选择 "GitHub Actions"
-
-### 步骤 4：运行工作流
-
-进入 **Actions -> Daily AI Digest -> Run workflow**，手动触发一次。
-
-成功后，每日 UTC 01:00（北京时间 09:00）会自动生成并部署最新日报。
-
-### 步骤 5：访问
-
-部署完成后，访问 `https://你的用户名.github.io/仓库名/` 即可查看。
 
 ## 数据来源与额度说明
 
@@ -120,7 +86,7 @@ python src/main.py
 ## 里程碑
 
 - [x] MVP：多源采集 + 评分排序 + AI 摘要 + JSON 存储
-- [x] 可用：GitHub Actions 自动部署 + Web 看板
+- [x] 可用：本地一键运行 + Web 看板
 - [ ] 好用：Prompt 持续调优、补充更多数据源、交互式专题抓取
 
 ## License

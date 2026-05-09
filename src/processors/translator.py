@@ -21,6 +21,11 @@ _IMG_PLACEHOLDER_RE = re.compile(r"[\(（]__IMGURL_(\d+)__[\)）]")
 SHALLOW_SOURCES = {"X", "HackerNews", "Reddit"}
 SHALLOW_LIMIT = 200  # 字符上限（英文 ~50 词，中文摘要够看大意）
 
+# 深度翻译也加上限：避免学术综述类长文（Lilian Weng / Chip Huyen 动辄 30k-50k 字）
+# token 爆炸。5000 字（英文）≈ 800-1000 词，正文核心观点已经讲完；
+# editor_note 给 80 字编辑解读，读者真要读全会去原文。
+DEEP_LIMIT = 5000
+
 # 翻译跳过：仓库类内容
 SKIP_TRANSLATION_SOURCES = {"GitHub", "HuggingFace"}
 
@@ -223,10 +228,12 @@ class Translator:
                 # 原文已是中文，直接复用，避免前端无中文内容时显示异常
                 item["chinese_content"] = content
                 continue
-            # 浅翻译源：截断 content 到 SHALLOW_LIMIT 字符再翻译，节约 token
-            # 讨论类内容（HN/Reddit/X）原文链接为主，知大意即可
+            # 浅翻译源：截断到 SHALLOW_LIMIT（200 字）
+            # 深度源也加 DEEP_LIMIT（5000 字）兜底，避免学术长文 token 爆炸
             if source in SHALLOW_SOURCES and len(content) > SHALLOW_LIMIT:
                 item["_translation_content"] = content[:SHALLOW_LIMIT]
+            elif len(content) > DEEP_LIMIT:
+                item["_translation_content"] = content[:DEEP_LIMIT]
             else:
                 item["_translation_content"] = content
             to_translate.append(item)

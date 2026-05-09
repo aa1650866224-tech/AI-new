@@ -36,9 +36,14 @@ env/
 .env
 .env.local
 
-# Data (可选，如果你不希望把每日数据提交到仓库)
-# data/daily/
-# web/data/
+# Data: 临时缓存与每日产出（web/data/ 仍被跟踪以便前端读取）
+data/article_cache/
+data/daily/
+data/*.jsonl
+
+# Claude Code local config & MCP artifacts
+.claude/settings.local.json
+.playwright-mcp/
 
 # OS
 .DS_Store

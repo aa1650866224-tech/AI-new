@@ -1,32 +1,29 @@
 /* =========================================================================
  *  AI Daily Digest · app.js
  *  ------------------------------------------------------------------------
- *  Wired-inspired editorial layout. Render layer rewritten;
- *  数据契约（与 src/main.py / processors 严格对齐）保持不变：
- *    item.{id, title, content, url, source, created_at,
- *          chinese_title, chinese_summary, chinese_content,
- *          category, importance, sentiment, heat_score, author, ...}
+ *  Wired-inspired editorial layout.
+ *  数据契约（与 src/main.py / processors 严格对齐）：
+ *    顶层：{ date, generated_at, overview, by_section: { morning, discussion, github, weekend } }
+ *    item.{id, title, content, url, source, created_at, section,
+ *          chinese_title, chinese_summary, chinese_content, editor_note,
+ *          category, sentiment, heat_score, author, ...}
  *    item.{verdict_tag, verdict_label, verdict_explain, verdict_analogy,
  *          verdict.{category_tag, who_should_care, prerequisites, similar_projects},
  *          stars, forks, stars_today, github_meta}   // GitHub 专属
  *  ========================================================================= */
 
 let currentData = null;
-let currentSource = 'all';
+let currentSection = 'morning';   // morning / discussion / github / weekend
 let currentFilter = 'all';
-let currentImp = 'all';
 let currentVerdict = 'true_use';   // GitHub 雷达子 tab
 let currentDetailItem = null;
 
-/* 各 source 的 mono kicker（ALL CAPS）+ 中文小标题 + 描述 */
-const SOURCE_META = {
-    all:          { mono: 'TODAY · DIGEST',     cn: '每日精选', desc: '基于多源数据的热度评分与聚类去重，精选每日 Top 资讯' },
-    GitHub:       { mono: 'GITHUB · RADAR',     cn: 'GitHub 雷达', desc: '按"开发者真在用 / 看的多用的少 / 营销味重 / 已停摆"四档分类的今日 GitHub 项目' },
-    X:            { mono: 'X · TRENDING',       cn: 'X 热门', desc: '来自 X (Twitter) 的 AI 相关热门推文' },
-    Reddit:       { mono: 'REDDIT · TRENDING',  cn: 'Reddit 热帖', desc: 'r/MachineLearning、r/LocalLLaMA 等社区的 AI 热门讨论' },
-    ProductHunt:  { mono: 'PRODUCT HUNT · TODAY', cn: 'Product Hunt', desc: 'ProductHunt 上今日热门的 AI 产品与工具' },
-    HackerNews:   { mono: 'HACKER NEWS · FRONT', cn: 'Hacker News 热榜', desc: 'HackerNews 上与 AI 相关的高分讨论帖' },
-    '量子位':      { mono: 'QBITAI · CHINA',      cn: '量子位', desc: '国内头部 AI 科技媒体，覆盖产业动态与技术前沿' }
+/* 4 板块 meta：mono kicker + 中文小标题 + 描述 */
+const SECTION_META = {
+    morning:    { mono: 'MORNING · BRIEF',     cn: '今早必读', desc: '厂商一手发布、政策动态、中文媒体头条——醒来想知道"昨夜世界发生了什么"' },
+    discussion: { mono: 'DISCUSSION · FLOOR',  cn: '圈子在吵', desc: 'HN / Reddit / X 白名单 / 一线开发者 blog——通勤想读"有人在吵什么"' },
+    github:     { mono: 'GITHUB · RADAR',      cn: 'GitHub 雷达', desc: '按"开发者真在用 / 看的多用的少 / 营销味重 / 已停摆"四档分类的 7 天 trending 项目' },
+    weekend:    { mono: 'WEEKEND · LONGREAD',  cn: '周末再看',  desc: 'HuggingFace 模型、长文、论文——周末想沉下来读"值得收藏的"' }
 };
 
 /* mono kicker 上显示的源缩写（ALL CAPS） */
@@ -34,16 +31,25 @@ const SOURCE_MONO = {
     X: 'X',
     HackerNews: 'HACKER NEWS',
     Reddit: 'REDDIT',
-    ProductHunt: 'PRODUCT HUNT',
     GitHub: 'GITHUB',
-    '量子位': 'QBITAI'
-};
-
-/* importance: 去 emoji，改 mono caps + 中文双语 */
-const IMP_META = {
-    '重磅':     { mono: 'TOP STORY',  cls: 'imp-high' },
-    '值得关注': { mono: 'WATCH',      cls: 'imp-mid'  },
-    '了解即可': { mono: 'FYI',        cls: 'imp-low'  }
+    HuggingFace: 'HUGGINGFACE',
+    OpenAI: 'OPENAI',
+    Anthropic: 'ANTHROPIC',
+    'Google DeepMind': 'DEEPMIND',
+    'Meta AI': 'META AI',
+    DeepSeek: 'DEEPSEEK',
+    '智谱': 'ZHIPU',
+    'Kimi': 'KIMI',
+    '通义': 'QWEN',
+    '量子位': 'QBITAI',
+    '机器之心': 'JIQIZHIXIN',
+    '网信办': 'CAC.GOV.CN',
+    'EU AI Act': 'EU AI ACT',
+    'White House AI EO': 'WH AI EO',
+    'Simon Willison': 'SIMON WILLISON',
+    'Lilian Weng': 'LILIAN WENG',
+    'Eugene Yan': 'EUGENE YAN',
+    'Chip Huyen': 'CHIP HUYEN'
 };
 
 /* GitHub verdict: 去 emoji，重写为 mono caps 编辑性标签 */
@@ -53,8 +59,6 @@ const VERDICT_META = {
     marketing: { mono: 'MARKETING',  cn: '营销味重 / 数据可疑',         short: '营销' },
     abandoned: { mono: 'ABANDONED',  cn: '已停摆 / 90 天未维护',         short: '弃坑' }
 };
-
-const IMPORTANCE_ORDER = { '重磅': 0, '值得关注': 1, '了解即可': 2 };
 
 /* ========== Glossary：去 emoji，纯文字标签 ========== */
 const GITHUB_GLOSSARY = {
@@ -131,24 +135,23 @@ async function loadDate(dateStr) {
         const resp = await fetch(`data/${dateStr}.json`);
         if (!resp.ok) throw new Error(resp.statusText);
         currentData = await resp.json();
-        updateSourceCounts();
+        updateSectionCounts();
         render();
     } catch (e) {
         document.getElementById('overviewText').textContent = '该日期暂无数据。';
         document.getElementById('newsList').innerHTML = '<p class="empty-state">该日期暂无数据</p>';
         document.getElementById('statCount').textContent = '0 STORIES';
         document.getElementById('genTime').textContent = '-';
-        updateSourceCounts();
+        updateSectionCounts();
     }
 }
 
-function updateSourceCounts() {
+function updateSectionCounts() {
     if (!currentData) return;
-    const bySource = currentData.by_source || {};
-    document.getElementById('count-all').textContent = currentData.count || 0;
-    ['X', 'Reddit', 'ProductHunt', 'GitHub', 'HackerNews', '量子位'].forEach(src => {
-        const count = (bySource[src] || []).length;
-        const el = document.getElementById(`count-${src}`);
+    const bySection = currentData.by_section || {};
+    ['morning', 'discussion', 'github', 'weekend'].forEach(s => {
+        const count = (bySection[s] || []).length;
+        const el = document.getElementById(`count-${s}`);
         if (el) el.textContent = count;
     });
 }
@@ -156,24 +159,16 @@ function updateSourceCounts() {
 /* ========== 数据切片 ========== */
 function getItemsToRender() {
     if (!currentData) return [];
-    if (currentSource === 'all') {
-        return (currentData.items || []).slice();
-    }
-    if (currentSource === 'GitHub') {
-        const all = currentData.by_source?.GitHub || [];
+    const bySection = currentData.by_section || {};
+    if (currentSection === 'github') {
+        const all = bySection.github || [];
         const items = all.filter(it =>
             !(it.id || '').startsWith('gh_rel_') && it.verdict_tag === currentVerdict
         );
         return items.slice().sort((a, b) => (b.heat_score || 0) - (a.heat_score || 0));
     }
-    const bySource = currentData.by_source || {};
-    const items = bySource[currentSource] || [];
-    return items.slice().sort((a, b) => {
-        const ai = IMPORTANCE_ORDER[a.importance] ?? 99;
-        const bi = IMPORTANCE_ORDER[b.importance] ?? 99;
-        if (ai !== bi) return ai - bi;
-        return (b.heat_score || 0) - (a.heat_score || 0);
-    });
+    const items = bySection[currentSection] || [];
+    return items.slice().sort((a, b) => (b.heat_score || 0) - (a.heat_score || 0));
 }
 
 /* ========== 主渲染 ========== */
@@ -181,35 +176,34 @@ function render() {
     if (!currentData) return;
 
     const items = getItemsToRender();
-    const meta = SOURCE_META[currentSource] || SOURCE_META.all;
+    const meta = SECTION_META[currentSection] || SECTION_META.morning;
 
     document.getElementById('sectionLabel').textContent = meta.mono;
     document.getElementById('sectionLabelCn').textContent = meta.cn;
     document.getElementById('pageDesc').textContent = meta.desc;
 
-    /* TODAY'S BRIEF 仅在 DIGEST 视图显示 */
+    /* TODAY'S BRIEF 仅在"今早必读"显示——它是当日总览 */
     const overviewSection = document.getElementById('overviewSection');
-    if (currentSource === 'all') {
+    if (currentSection === 'morning') {
         overviewSection.style.display = 'block';
         document.getElementById('overviewText').textContent = currentData.overview || '今日尚无速览';
     } else {
         overviewSection.style.display = 'none';
     }
 
-    /* GitHub 雷达：4 档 verdict 判据 + 隐藏分类/重要性筛选 */
+    /* GitHub 雷达：4 档 verdict 判据 + 隐藏分类筛选 */
     renderPitfallCriteria();
     const filtersRow = document.getElementById('filtersRow');
     if (filtersRow) {
-        filtersRow.style.display = (currentSource === 'GitHub') ? 'none' : '';
+        filtersRow.style.display = (currentSection === 'github') ? 'none' : '';
     }
 
     document.getElementById('genTime').textContent =
         currentData.generated_at ? currentData.generated_at.slice(0, 16).replace('T', ' ') : '-';
 
-    /* 筛选 */
+    /* 筛选（importance 已弃，只剩 category） */
     let filtered = items;
     if (currentFilter !== 'all') filtered = filtered.filter(i => i.category === currentFilter);
-    if (currentImp !== 'all')    filtered = filtered.filter(i => i.importance === currentImp);
 
     document.getElementById('statCount').textContent =
         `${String(filtered.length).padStart(2, '0')} STORIES`;
@@ -219,10 +213,10 @@ function render() {
 
     if (filtered.length === 0) {
         let emptyMsg;
-        if (currentSource === 'GitHub') {
+        if (currentSection === 'github') {
             emptyMsg = '今日没有此类项目';
         } else if (items.length === 0) {
-            emptyMsg = '该来源暂无数据。可能是 API 限额用完或当日无匹配内容。';
+            emptyMsg = '该板块暂无数据。可能是某些源 API 限额用完或当日无匹配内容。';
         } else {
             emptyMsg = '当前筛选条件下无匹配内容。';
         }
@@ -255,11 +249,8 @@ function renderStoryItem(item, idx) {
         const v = VERDICT_META[item.verdict_tag] || VERDICT_META.true_use;
         kickers.push(`<span class="story-kicker-sep">·</span>`);
         kickers.push(`<span class="story-kicker verdict-${item.verdict_tag || 'true_use'}">${v.mono}</span>`);
-    } else if (item.importance && IMP_META[item.importance]) {
-        const imp = IMP_META[item.importance];
-        kickers.push(`<span class="story-kicker-sep">·</span>`);
-        kickers.push(`<span class="story-kicker ${imp.cls}">${imp.mono}</span>`);
     }
+    /* importance 字段已弃 - 综合精选砍除后该字段无意义 */
 
     /* 标题：GitHub 用 repo 名（mono 显示） + 域名小注 */
     const repoMatch = isGitHub ? (item.url || '').match(/github\.com\/[^\/]+\/([^\/?#]+)/) : null;
@@ -301,12 +292,16 @@ function renderStoryItem(item, idx) {
         ? `<a class="story-meta-discussion" href="${hnDiscussion}" target="_blank" rel="noopener">HN DISCUSSION →</a>`
         : '';
 
+    /* editor_note：编辑按语（Wired 风 pull-quote），非 GitHub 源专属 */
+    const editorNote = (!isGitHub && item.editor_note) ? item.editor_note : '';
+
     article.innerHTML = `
         <div class="story-numeral">${numeral}</div>
         <div class="story-body">
             <div class="story-kickers">${kickers.join('')}</div>
             <h2 class="${headlineCls}" data-clickable="1">${escapeHtml(titleText)}${domainTag}</h2>
             ${deck ? `<p class="story-deck" data-clickable="1">${escapeHtml(deck)}</p>` : ''}
+            ${editorNote ? `<aside class="story-editor-note"><span class="story-editor-note-kicker">编者按 —</span>${escapeHtml(editorNote)}</aside>` : ''}
             <div class="story-meta">
                 ${author ? `<span>${author}</span>` : ''}
                 ${heatTxt ? `<span>${heatTxt}</span>` : ''}
@@ -361,13 +356,13 @@ function renderPitfallCriteria() {
     const grid = document.getElementById('pitfallCriteriaGrid');
     if (!section || !grid) return;
 
-    if (currentSource !== 'GitHub') {
+    if (currentSection !== 'github') {
         section.style.display = 'none';
         return;
     }
 
     section.style.display = 'block';
-    const trending = (currentData?.by_source?.GitHub || [])
+    const trending = (currentData?.by_section?.github || [])
         .filter(it => !(it.id || '').startsWith('gh_rel_'));
 
     grid.innerHTML = PITFALL_CRITERIA.map(c => {
@@ -414,10 +409,8 @@ function showDetailPage(item) {
     if (isGitHub) {
         const v = VERDICT_META[item.verdict_tag] || VERDICT_META.true_use;
         kickers.push(`<span class="detail-kicker verdict-${item.verdict_tag || 'true_use'}">${v.mono}</span>`);
-    } else if (item.importance && IMP_META[item.importance]) {
-        const imp = IMP_META[item.importance];
-        kickers.push(`<span class="detail-kicker ${imp.cls}">${imp.mono}</span>`);
     }
+    /* importance 字段已弃 */
 
     /* 双语内容 */
     const contentIsChinese = isMostlyChinese(item.content || '');
@@ -686,7 +679,7 @@ async function init() {
     select.addEventListener('change', () => loadDate(select.value));
     document.getElementById('refreshBtn').addEventListener('click', () => loadDate(select.value));
 
-    /* 源切换 ribbon tab */
+    /* 板块切换 ribbon tab */
     document.querySelectorAll('.ribbon-tab').forEach(btn => {
         btn.addEventListener('click', () => {
             if (currentDetailItem) {
@@ -695,34 +688,21 @@ async function init() {
             }
             document.querySelectorAll('.ribbon-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            currentSource = btn.dataset.source;
+            currentSection = btn.dataset.section;
             currentFilter = 'all';
-            currentImp = 'all';
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             document.querySelector('.filter-btn[data-filter="all"]').classList.add('active');
-            document.querySelectorAll('.imp-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector('.imp-btn[data-imp="all"]').classList.add('active');
             window.scrollTo(0, 0);
             render();
         });
     });
 
-    /* 分类筛选 */
+    /* 分类筛选（importance 已弃，只保留 category） */
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentFilter = btn.dataset.filter;
-            render();
-        });
-    });
-
-    /* 重要性筛选 */
-    document.querySelectorAll('.imp-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.imp-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentImp = btn.dataset.imp;
             render();
         });
     });

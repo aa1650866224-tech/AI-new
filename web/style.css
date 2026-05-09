@@ -466,6 +466,28 @@ button { font: inherit; cursor: pointer; }
     letter-spacing: 0.02em;
     margin: 0;
 }
+/* ============== editor_note：编辑按语 pull-quote（Wired 风） ============== */
+.story-editor-note {
+    border-left: 2px solid var(--link-blue);
+    padding: 4px 0 4px 12px;
+    margin: 6px 0 0 0;
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--caption-gray);
+}
+.story-editor-note-kicker {
+    display: inline;
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--ink-pure);
+    margin-right: 6px;
+    text-transform: uppercase;
+}
 .story-meta {
     display: flex;
     flex-wrap: wrap;

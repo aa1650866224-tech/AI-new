@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Work+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="style.css?v=25">
+    <link rel="stylesheet" href="style.css?v=26">
 </head>
 <body>
 
@@ -39,43 +39,28 @@
     </div>
 </header>
 
-<!-- ========== 源切换 ribbon tab（mono caps，全 bleed 黑底） ========== -->
-<nav class="source-ribbon" id="sourceRibbon" aria-label="来源切换">
+<!-- ========== 板块切换 ribbon tab（mono caps，全 bleed 黑底） ========== -->
+<nav class="source-ribbon" id="sourceRibbon" aria-label="板块切换">
     <div class="source-ribbon-inner">
-        <button class="ribbon-tab active" data-source="all">
-            <span class="ribbon-mono">DIGEST</span>
-            <span class="ribbon-cn">每日精选</span>
-            <span class="ribbon-count" id="count-all">0</span>
+        <button class="ribbon-tab active" data-section="morning">
+            <span class="ribbon-mono">MORNING</span>
+            <span class="ribbon-cn">今早必读</span>
+            <span class="ribbon-count" id="count-morning">0</span>
         </button>
-        <button class="ribbon-tab" data-source="GitHub">
+        <button class="ribbon-tab" data-section="discussion">
+            <span class="ribbon-mono">DISCUSSION</span>
+            <span class="ribbon-cn">圈子在吵</span>
+            <span class="ribbon-count" id="count-discussion">0</span>
+        </button>
+        <button class="ribbon-tab" data-section="github">
             <span class="ribbon-mono">GH&nbsp;RADAR</span>
             <span class="ribbon-cn">GitHub 雷达</span>
-            <span class="ribbon-count" id="count-GitHub">0</span>
+            <span class="ribbon-count" id="count-github">0</span>
         </button>
-        <button class="ribbon-tab" data-source="X">
-            <span class="ribbon-mono">X</span>
-            <span class="ribbon-cn">X 热门</span>
-            <span class="ribbon-count" id="count-X">0</span>
-        </button>
-        <button class="ribbon-tab" data-source="HackerNews">
-            <span class="ribbon-mono">HN</span>
-            <span class="ribbon-cn">Hacker News</span>
-            <span class="ribbon-count" id="count-HackerNews">0</span>
-        </button>
-        <button class="ribbon-tab" data-source="Reddit">
-            <span class="ribbon-mono">RDT</span>
-            <span class="ribbon-cn">Reddit</span>
-            <span class="ribbon-count" id="count-Reddit">0</span>
-        </button>
-        <button class="ribbon-tab" data-source="ProductHunt">
-            <span class="ribbon-mono">PH</span>
-            <span class="ribbon-cn">Product Hunt</span>
-            <span class="ribbon-count" id="count-ProductHunt">0</span>
-        </button>
-        <button class="ribbon-tab" data-source="量子位">
-            <span class="ribbon-mono">QBT</span>
-            <span class="ribbon-cn">量子位</span>
-            <span class="ribbon-count" id="count-量子位">0</span>
+        <button class="ribbon-tab" data-section="weekend">
+            <span class="ribbon-mono">WEEKEND</span>
+            <span class="ribbon-cn">周末再看</span>
+            <span class="ribbon-count" id="count-weekend">0</span>
         </button>
     </div>
 </nav>
@@ -113,13 +98,7 @@
                 <button class="filter-btn" data-filter="投资融资">投资融资</button>
                 <button class="filter-btn" data-filter="开源工具">开源工具</button>
             </div>
-            <div class="filter-group">
-                <span class="filter-group-label">PRIORITY</span>
-                <button class="imp-btn active" data-imp="all">All</button>
-                <button class="imp-btn imp-high" data-imp="重磅">重磅</button>
-                <button class="imp-btn imp-mid" data-imp="值得关注">值得关注</button>
-                <button class="imp-btn imp-low" data-imp="了解即可">了解即可</button>
-            </div>
+            <!-- PRIORITY 筛选条已删除（importance 字段在 v2 架构中弃用） -->
         </div>
 
         <!-- GitHub 雷达·4 档 verdict tab + 判据卡（点击切换 currentVerdict） -->
@@ -144,7 +123,7 @@
         <footer class="page-footer">
             <span class="page-footer-mark">DAILY · AI DIGEST</span>
             <span class="page-footer-meta">GENERATED <span id="genTime">-</span></span>
-            <span class="page-footer-meta">SOURCES · X · HACKERNEWS · REDDIT · GITHUB · PRODUCTHUNT · QBITAI</span>
+            <span class="page-footer-meta">SECTIONS · MORNING · DISCUSSION · GITHUB · WEEKEND</span>
         </footer>
     </div>
 
@@ -158,6 +137,6 @@
 
 </main>
 
-<script src="app.js?v=25"></script>
+<script src="app.js?v=26"></script>
 </body>
 </html>

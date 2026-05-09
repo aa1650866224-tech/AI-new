@@ -2,6 +2,11 @@
 文章全文翻译模块
 对抓取到的英文正文进行批量翻译，支持长文分段。
 结果写入 item["chinese_content"]。
+
+翻译分级（按 source 区分深度）：
+- DEEP：厂商博客/个人 blog/政策/中文媒体——全文翻译（深度内容值得读完）
+- SHALLOW：HN/Reddit/X——只翻译前 SHALLOW_LIMIT 字（讨论类，原文链接为主）
+- 不翻译：GitHub（README 已由专属 prompt 生成中文）/ HuggingFace（模型描述无须翻）
 """
 import os
 import re
@@ -11,6 +16,13 @@ import requests
 _IMG_MD_RE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 # 兼容 LLM 把英文括号改成中文括号的情况
 _IMG_PLACEHOLDER_RE = re.compile(r"[\(（]__IMGURL_(\d+)__[\)）]")
+
+# 翻译分级：浅翻译（讨论类，只翻前 200 字）
+SHALLOW_SOURCES = {"X", "HackerNews", "Reddit"}
+SHALLOW_LIMIT = 200  # 字符上限（英文 ~50 词，中文摘要够看大意）
+
+# 翻译跳过：仓库类内容
+SKIP_TRANSLATION_SOURCES = {"GitHub", "HuggingFace"}
 
 
 class Translator:
@@ -198,9 +210,9 @@ class Translator:
         """
         to_translate = []
         for item in items:
-            # GitHub 仓库 README 由 summarizer 直接基于 _readme_hint 生成中文摘要，
-            # 全文翻译既贵又没用——用户感兴趣会自己点原文链接。
-            if item.get("source") == "GitHub":
+            source = item.get("source", "")
+            # 仓库类源跳过翻译（README 由 summarizer 直接生成中文，HF 模型描述无须翻）
+            if source in SKIP_TRANSLATION_SOURCES:
                 continue
             content = item.get("content", "") or ""
             if len(content.strip()) < 80:
@@ -211,6 +223,12 @@ class Translator:
                 # 原文已是中文，直接复用，避免前端无中文内容时显示异常
                 item["chinese_content"] = content
                 continue
+            # 浅翻译源：截断 content 到 SHALLOW_LIMIT 字符再翻译，节约 token
+            # 讨论类内容（HN/Reddit/X）原文链接为主，知大意即可
+            if source in SHALLOW_SOURCES and len(content) > SHALLOW_LIMIT:
+                item["_translation_content"] = content[:SHALLOW_LIMIT]
+            else:
+                item["_translation_content"] = content
             to_translate.append(item)
 
         if not to_translate:
@@ -223,8 +241,11 @@ class Translator:
 
         for item in to_translate:
             title = item.get("chinese_title") or item.get("title", "")[:40]
-            print(f"  -> [{item.get('source','?')}] {title}...")
-            result = self.translate(item.get("content", ""))
+            source = item.get("source", "?")
+            depth = "shallow" if source in SHALLOW_SOURCES else "deep"
+            text_to_translate = item.pop("_translation_content", item.get("content", ""))
+            print(f"  -> [{source}|{depth}|{len(text_to_translate)}c] {title}...")
+            result = self.translate(text_to_translate)
             if result:
                 item["chinese_content"] = result
                 success += 1

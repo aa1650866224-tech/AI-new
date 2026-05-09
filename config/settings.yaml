@@ -4,13 +4,6 @@ deepseek:
   api_base: "https://api.deepseek.com/v1"
   model: "deepseek-chat"
 
-# X API (Twitter)
-x_api:
-  bearer_token: ${X_BEARER_TOKEN}
-  max_results_per_query: 50
-  min_likes: 30
-  min_retweets: 5
-
 # Hacker News
 hackernews:
   min_score: 50
@@ -31,20 +24,6 @@ rss:
     - name: "量子位"
       url: "https://www.qbitai.com/feed"
   max_per_feed: 10
-
-# Product Hunt
-producthunt:
-  token: ${PRODUCTHUNT_TOKEN}
-  max_results: 20
-  min_votes: 20
-  ai_topics:
-    - "artificial-intelligence"
-    - "machine-learning"
-    - "ai"
-    - "chatgpt"
-    - "llm"
-    - "open-source"
-    - "developer-tools"
 
 # GitHub
 github:

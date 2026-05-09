@@ -12,12 +12,10 @@ load_dotenv(PROJECT_ROOT / ".env")
 # 把项目根目录加入路径
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.collectors.x_collector import XCollector
 from src.collectors.hn_collector import HNCollector
 from src.collectors.github_collector import GitHubCollector
 from src.collectors.reddit_collector import RedditCollector
 from src.collectors.rss_collector import RSSCollector
-from src.collectors.producthunt_collector import ProductHuntCollector
 from src.processors.dedup import url_dedup, content_dedup, cluster_dedup
 from src.processors.ranker import Ranker
 from src.processors.summarize import Summarizer
@@ -54,11 +52,9 @@ def main():
     # 1. 采集（单个来源失败不影响其他来源）
     all_items = []
     sources = [
-        ("X", XCollector),
         ("Hacker News", HNCollector),
         ("Reddit", RedditCollector),
         ("RSS feeds", RSSCollector),
-        ("Product Hunt", ProductHuntCollector),
         ("GitHub", GitHubCollector),
     ]
     keywords_cfg = config.get("keywords", {})

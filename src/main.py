@@ -16,6 +16,7 @@ from src.collectors.hn_collector import HNCollector
 from src.collectors.github_collector import GitHubCollector
 from src.collectors.reddit_collector import RedditCollector
 from src.collectors.rss_collector import RSSCollector
+from src.collectors.hf_collector import HFCollector
 from src.processors.dedup import url_dedup, content_dedup, cluster_dedup
 from src.processors.ranker import Ranker
 from src.processors.summarize import Summarizer
@@ -56,6 +57,7 @@ def main():
         ("Reddit", RedditCollector),
         ("RSS feeds", RSSCollector),
         ("GitHub", GitHubCollector),
+        ("HuggingFace", HFCollector),
     ]
     keywords_cfg = config.get("keywords", {})
     total_steps = len(sources) + 4  # 采集 + URL去重 + 评分 + 抓取正文 + 翻译

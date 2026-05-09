@@ -48,6 +48,11 @@ rss:
       url: "https://huyenchip.com/feed.xml"
   max_per_feed: 10
 
+# HuggingFace Trending Models
+huggingface:
+  max_results: 15
+  sort: "trendingScore"  # trendingScore / downloads / likes
+
 # GitHub
 github:
   token: ${GH_PAT}

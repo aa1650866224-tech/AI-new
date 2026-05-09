@@ -69,6 +69,12 @@ github:
     - "anthropics/anthropic-cookbook"
   check_releases: true
 
+# 板块容量上限（综合精选已砍除，板块直接限额）
+sections:
+  morning_max: 8       # 今早必读：厂商博客 + 政策 + 中文媒体
+  discussion_max: 10   # 圈子在吵：HN + Reddit + X + 个人 blog
+  # github / weekend 不 cap（GitHub 走 7 天雷达自带限额，weekend 量小）
+
 # 热度评分权重
 ranking:
   like_weight: 1.0

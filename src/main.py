@@ -23,6 +23,7 @@ from src.processors.summarize import Summarizer
 from src.processors.article_fetcher import enrich_items
 from src.processors.translator import Translator
 from src.processors.github_verdict import annotate as annotate_github_verdict
+from src.processors.section_mapper import assign_sections, split_by_section
 from src.processors import github_snapshot
 from src.processors import github_aggregate
 from src.storage.json_storage import JsonStorage
@@ -103,38 +104,32 @@ def main():
     translator = Translator(config)
     items = translator.process_batch(items)
 
-    # 6. 各来源 Top 10（用于来源选项卡）
-    # 注：步骤编号延续上面，这里已经是第 11 步之后
-    source_names = ["X", "HackerNews", "Reddit", "GitHub", "量子位", "ProductHunt"]
-    by_source = {}
-    for src in source_names:
-        src_items = [item for item in items if item.get("source") == src][:10]
-        by_source[src] = src_items
-        print(f"      -> {src}: {len(src_items)} items")
+    # 6. 板块映射（按 source 给每条打 section 字段）
+    items = assign_sections(items)
 
-    # 7. 统一做 AI 摘要（合并所有需要摘要的条目，避免重复调用 API）
-    summarize_ids = set()
-    for src_items in by_source.values():
-        for item in src_items:
-            summarize_ids.add(item["id"])
+    # 7. 板块切分 + cap（节约后续 AI 摘要的 token——cap 之外的不摘要）
+    sections_cfg = config.get("sections", {})
+    section_limits = {
+        "morning": sections_cfg.get("morning_max", 8),
+        "discussion": sections_cfg.get("discussion_max", 10),
+        # github / weekend 不 cap
+    }
+    by_section = split_by_section(items, limits=section_limits)
+    for s, lst in by_section.items():
+        print(f"      -> {s}: {len(lst)} items (cap={section_limits.get(s, '-')})")
 
-    items_to_summarize = [item for item in items if item["id"] in summarize_ids]
-    print(f"      -> AI summarizing {len(items_to_summarize)} unique items...")
-
+    # 8. AI 摘要（只对板块切分后的 items 做，节约 LLM 调用）
+    items_to_summarize = []
+    for section_items in by_section.values():
+        items_to_summarize.extend(section_items)
+    print(f"      -> AI summarizing {len(items_to_summarize)} items...")
     summarizer = Summarizer(config)
-    summarized = summarizer.process_batch(items_to_summarize)
-    summarized_map = {item["id"]: item for item in summarized}
+    summarizer.process_batch(items_to_summarize)  # in-place 修改，by_section 内 dict 同步更新
 
-    # 用摘要后的数据替换各来源，并确保按热度排序
-    for src in source_names:
-        src_list = [summarized_map[item["id"]] for item in by_source[src]]
-        src_list.sort(key=lambda x: x.get("heat_score", 0), reverse=True)
-        by_source[src] = src_list
-
-    # F9：GitHub 雷达 7 天滚动累积（独立存档，不读历史 daily JSON 避免旧规则污染）
+    # 9. GitHub 雷达 7 天滚动累积（独立处理，覆盖 by_section["github"]）
     today_str = datetime.now().strftime("%Y-%m-%d")
-    today_github_full = list(by_source["GitHub"])  # 今日全集（用于 append，避免被 aggregate 截断后丢条目）
-    by_source["GitHub"] = github_aggregate.aggregate_7days(
+    today_github_full = list(by_section["github"])  # 今日全集，用于 append（避免被 aggregate 截断后丢条目）
+    by_section["github"] = github_aggregate.aggregate_7days(
         today_github_full,
         radar_path=RADAR_PATH_ABS,
         today_str=today_str,
@@ -144,43 +139,23 @@ def main():
     pruned = github_aggregate.prune_old(RADAR_PATH_ABS, max_days=14)
     print(f"[GitHubRadar] +{appended} today, pruned {pruned} >14d")
 
-    # 7. 综合精选：从各来源中优先挑选重磅 → 值得关注 → 了解即可
-    top_n = config.get("ranking", {}).get("daily_top_n", 15)
-    all_summarized = list(summarized_map.values())
+    # 10. 防御性清场：移除残留的 importance 和临时字段
+    # （summarize.process_batch 已清 importance，这里是双重保险，且清掉 _readme_hint）
+    for section_items in by_section.values():
+        for item in section_items:
+            item.pop("importance", None)
+            item.pop("_readme_hint", None)
 
-    # 按重要性分层，同层内按热度排序
-    def _pick(level: str, limit: int):
-        pool = [it for it in all_summarized if it.get("importance") == level]
-        pool.sort(key=lambda x: x.get("heat_score", 0), reverse=True)
-        return pool[:limit]
+    # 11. 日报总览（用 morning + discussion 前 10 条做素材，最能代表当日重要新闻）
+    overview_pool = (by_section["morning"] + by_section["discussion"])[:10]
+    overview = summarizer.daily_overview(overview_pool)
 
-    combined_top = _pick("重磅", top_n)
-    if len(combined_top) < top_n:
-        combined_top.extend(_pick("值得关注", top_n - len(combined_top)))
-    if len(combined_top) < top_n:
-        combined_top.extend(_pick("了解即可", top_n - len(combined_top)))
-
-    # URL/内容去重（避免同一条在不同来源中出现多次）
-    seen = set()
-    deduped = []
-    for it in combined_top:
-        key = it.get("url", it["id"])
-        if key not in seen:
-            seen.add(key)
-            deduped.append(it)
-    combined_top = deduped[:top_n]
-    print(f"      -> {len(combined_top)} combined top (重磅优先)")
-
-    overview = summarizer.daily_overview(combined_top)
-
-    # 9. 组装日报
+    # 12. 组装日报（新结构 - by_section 替代 items + by_source）
     daily_digest = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "generated_at": datetime.now().isoformat(),
         "overview": overview,
-        "count": len(combined_top),
-        "items": combined_top,
-        "by_source": by_source
+        "by_section": by_section,
     }
 
     # 10. 存储

@@ -106,6 +106,46 @@ def _clean_article_footer(text: str) -> str:
     return text
 
 
+# 量子位文章固定开头模板：
+#   Jim Fan全新暴论出炉      ← 副标题（每篇不同，不死匹配）
+#   henry 发自 凹非寺        ← 「XX 发自 YY」签发地点
+#   量子位 | 公众号 QbitAI   ← 固定媒体署名
+# 仅对量子位域名生效，不做通用启发式（避免误伤其他源）
+_QBITAI_BYLINE_RE = re.compile(r"^\S+\s*发自\s*\S+\s*$")
+
+
+def _clean_article_header(text: str, source_url: str) -> str:
+    """仅对 qbitai 域名清理开头 byline 模板。
+    在前 5 段范围内查找 marker，找到就把 marker 段及之前所有段一起砍掉。
+    取最靠后的 marker 位置，避免漏砍中间一行。
+    """
+    if not text or not source_url:
+        return text
+    if "qbitai" not in source_url.lower():
+        return text
+
+    paragraphs = text.split("\n\n")
+    scan_limit = min(5, len(paragraphs))
+    cut_idx = -1
+    for i in range(scan_limit):
+        p = paragraphs[i].strip()
+        if not p:
+            continue
+        if _QBITAI_BYLINE_RE.match(p):
+            cut_idx = i
+            continue
+        if "公众号 QbitAI" in p or "公众号QbitAI" in p:
+            cut_idx = i
+            continue
+        if p == "量子位":
+            cut_idx = i
+            continue
+
+    if cut_idx >= 0:
+        return "\n\n".join(paragraphs[cut_idx + 1:]).lstrip()
+    return text
+
+
 # ---- GitHub 仓库 README 抓取 ----
 
 # 形如 https://github.com/owner/repo 或 https://github.com/owner/repo/
@@ -310,10 +350,10 @@ def fetch_article_text(url: str, cache_dir: Path | None = None, timeout: int = 1
         cache_dir = Path(__file__).resolve().parent.parent.parent / "data" / "article_cache"
     cache_dir = Path(cache_dir)
 
-    # 尝试读缓存（旧 cache 没经过 footer 清洗，加载时统一过一遍）
+    # 尝试读缓存（旧 cache 没经过 header/footer 清洗，加载时统一过一遍）
     cached = _load_cache(url, cache_dir)
     if cached is not None:
-        return _clean_article_footer(cached)
+        return _clean_article_footer(_clean_article_header(cached, url))
 
     # arxiv 走官方 API（abstract 页 trafilatura 抓不全，PDF 也抓不了）
     if _get_domain(url) == "arxiv.org":
@@ -361,7 +401,8 @@ def fetch_article_text(url: str, cache_dir: Path | None = None, timeout: int = 1
         if not extracted or len(extracted.strip()) < 200:
             return None
 
-        # 切除版权声明/相关推荐 footer
+        # 切除量子位 byline header + 版权声明/相关推荐 footer
+        extracted = _clean_article_header(extracted, url)
         extracted = _clean_article_footer(extracted)
 
         # 截断过长内容（超过 5 万字直接截断，避免 JSON 过大）

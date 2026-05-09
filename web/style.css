@@ -710,6 +710,7 @@ button { font: inherit; cursor: pointer; }
     line-height: 1.75;
     color: var(--ink-page);
     letter-spacing: 0.02em;
+    text-indent: 2em;
 }
 
 /* GitHub verdict 详情块 */

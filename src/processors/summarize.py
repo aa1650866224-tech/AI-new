@@ -42,13 +42,18 @@ class Summarizer:
         return resp.json()["choices"][0]["message"]["content"]
 
     def summarize_item(self, title: str, content: str, source: str) -> dict:
-        prompt = f"""你是一位专业的AI新闻编辑。请对以下{source}内容进行深度分析，并严格按JSON格式返回，不要包含任何其他文字：
+        prompt = f"""你是一位专业的AI新闻编辑。请对以下{source}内容进行深度分析，并严格按JSON格式返回，不要包含任何其他文字。
+
+注意 chinese_summary 与 editor_note 是两个独立字段，分工严格：
+- chinese_summary：客观新闻体，只陈述事实
+- editor_note：主观编辑视角，给判断
+
 {{
   "chinese_title": "用一句话概括的中文标题（不超过30字）",
-  "chinese_summary": "3-5句话的中文深度摘要，包含事件背景、核心内容和潜在影响",
+  "chinese_summary": "60-80字的客观新闻摘要，最多两句话。只陈述事实，不做评价。必须包含：核心事件 + 关键数字/产品名/版本号。禁止『值得关注』『引发讨论』『令人瞩目』『重磅』等评价性套话，禁止任何形容词式判断。",
   "original_excerpt": "从原文中摘抄出2-3句最关键的原话（保持原文语言，不要翻译），帮助读者快速了解原文核心。如果原文是代码或极短内容，则直接摘录全部",
   "category": "从[模型发布, 产品更新, 技术论文, 行业观点, 投资融资, 开源工具]中选择最贴合的一个",
-  "editor_note": "80-120字的编辑按语：用资深编辑的口吻说明这条为什么值得读，给独立判断（背景、影响、对比），不要复述chinese_summary。直接给观点，不要场面话。",
+  "editor_note": "80-120字的编辑按语，主观视角。回答『读者为什么应该花时间看这条』——可以是判断（这是真突破还是炒作）、对比（和 X 公司同类产品差在哪）、提醒（哪个细节大家都没注意到）、祛魅（说人话指出哪里其实不新）。禁止重复 chinese_summary 已经讲过的事实，禁止场面话。",
   "sentiment": "整体情绪倾向：positive / neutral / negative"
 }}
 

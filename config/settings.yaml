@@ -13,9 +13,7 @@ hackernews:
 # Reddit
 reddit:
   subreddits:
-    - "MachineLearning"
-    - "LocalLLaMA"
-    - "artificial"
+    - "LocalLLaMA"  # 编辑判定：r/MachineLearning 近年水化，r/artificial 是新手集中地，只留 LocalLLaMA
   max_results_per_sub: 15
   min_score: 10
 

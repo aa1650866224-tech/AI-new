@@ -20,6 +20,7 @@ import trafilatura
 SKIP_DOMAINS = {
     "twitter.com", "x.com", "t.co",
     "github.com", "gist.github.com",
+    "huggingface.co",  # HF 模型页面：保留 hf_collector 写入的中文模型卡片，不让 trafilatura 抓回英文 README 覆盖
     "youtube.com", "youtu.be",
     "reddit.com", "redd.it",
     "producthunt.com",
@@ -74,6 +75,35 @@ def should_fetch(url: str) -> bool:
         return False
     domain = _get_domain(url)
     return domain not in SKIP_DOMAINS
+
+
+# trafilatura 抓回正文末尾常见的页脚 marker——版权声明、相关推荐链接列表等
+# 仅在文章后半部识别，避免误切正文中字面引用的 "版权所有"
+_FOOTER_MARKERS = (
+    "*版权所有",            # 量子位等中文媒体常见的斜体版权声明
+    "版权所有，未经授权",
+    "未经授权不得以任何形式",
+    "*相关阅读*", "*相关推荐*", "*延伸阅读*", "*推荐阅读*",
+    "## 相关阅读", "## 相关推荐", "## 推荐阅读", "## 延伸阅读",
+    "**相关阅读**", "**相关推荐**",
+)
+
+
+def _clean_article_footer(text: str) -> str:
+    """切除文章末尾的版权声明 / 相关推荐链接列表等噪声。
+    仅扫描后半部，避免误伤正文中的字面引用。
+    """
+    if not text:
+        return text
+    cut_search_start = len(text) // 2
+    earliest = len(text)
+    for marker in _FOOTER_MARKERS:
+        idx = text.find(marker, cut_search_start)
+        if 0 <= idx < earliest:
+            earliest = idx
+    if earliest < len(text):
+        return text[:earliest].rstrip()
+    return text
 
 
 # ---- GitHub 仓库 README 抓取 ----
@@ -280,10 +310,10 @@ def fetch_article_text(url: str, cache_dir: Path | None = None, timeout: int = 1
         cache_dir = Path(__file__).resolve().parent.parent.parent / "data" / "article_cache"
     cache_dir = Path(cache_dir)
 
-    # 尝试读缓存
+    # 尝试读缓存（旧 cache 没经过 footer 清洗，加载时统一过一遍）
     cached = _load_cache(url, cache_dir)
     if cached is not None:
-        return cached
+        return _clean_article_footer(cached)
 
     # arxiv 走官方 API（abstract 页 trafilatura 抓不全，PDF 也抓不了）
     if _get_domain(url) == "arxiv.org":
@@ -330,6 +360,9 @@ def fetch_article_text(url: str, cache_dir: Path | None = None, timeout: int = 1
 
         if not extracted or len(extracted.strip()) < 200:
             return None
+
+        # 切除版权声明/相关推荐 footer
+        extracted = _clean_article_footer(extracted)
 
         # 截断过长内容（超过 5 万字直接截断，避免 JSON 过大）
         MAX_LEN = 50000

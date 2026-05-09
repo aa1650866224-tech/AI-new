@@ -195,7 +195,8 @@ button { font: inherit; cursor: pointer; }
     padding: 0 var(--gutter);
 }
 .ribbon-tab {
-    flex: 0 0 auto;
+    flex: 1 1 0;          /* 4 个 tab 平分容器宽度（与 masthead max-width 对齐）*/
+    min-width: 140px;     /* 小屏兜底：每个 tab 最少 140px，超容器宽度时横向滚动 */
     background: transparent;
     color: var(--paper);
     border: 0;

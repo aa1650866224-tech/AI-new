@@ -48,7 +48,7 @@ class Summarizer:
   "chinese_summary": "3-5句话的中文深度摘要，包含事件背景、核心内容和潜在影响",
   "original_excerpt": "从原文中摘抄出2-3句最关键的原话（保持原文语言，不要翻译），帮助读者快速了解原文核心。如果原文是代码或极短内容，则直接摘录全部",
   "category": "从[模型发布, 产品更新, 技术论文, 行业观点, 投资融资, 开源工具]中选择最贴合的一个",
-  "importance": "从[重磅, 值得关注, 了解即可]中选择",
+  "editor_note": "80-120字的编辑按语：用资深编辑的口吻说明这条为什么值得读，给独立判断（背景、影响、对比），不要复述chinese_summary。直接给观点，不要场面话。",
   "sentiment": "整体情绪倾向：positive / neutral / negative"
 }}
 
@@ -64,9 +64,11 @@ class Summarizer:
                 "chinese_summary": raw[:300],
                 "original_excerpt": content[:300] if content else "",
                 "category": "行业观点",
-                "importance": "了解即可",
+                "editor_note": "（按语生成失败，模型返回未通过 JSON 解析）",
                 "sentiment": "neutral"
             }
+        # 即使 LLM 错误返回了 importance，显式清掉——本架构不再使用该字段
+        data.pop("importance", None)
         return data
 
     def summarize_github_repo(
@@ -174,8 +176,7 @@ README 片段（已截取头部）：
 
     def process_batch(self, items: list) -> list:
         for item in items:
-            # GitHub 仓库（无论是否拿到 README）都走专属祛魅 prompt，
-            # 不能 fallback 到 summarize_item，否则会被写入 importance
+            # GitHub 仓库（无论是否拿到 README）都走专属祛魅 prompt
             if item.get("source") == "GitHub" and item.get("verdict_tag"):
                 readme_hint = item.get("_readme_hint", "") or ""
                 result = self.summarize_github_repo(
@@ -187,8 +188,6 @@ README 片段（已截取头部）：
                 item.update(result)
                 # 摘要素材用完即扔，不写入最终 JSON
                 item.pop("_readme_hint", None)
-                # GitHub 源不应保留 importance（与 verdict_tag 二选一）
-                item.pop("importance", None)
                 continue
 
             # 优先使用中文翻译内容做摘要，更准确；否则 fallback 到原文
@@ -199,4 +198,8 @@ README 片段（已截取头部）：
                 item.get("source", "未知")
             )
             item.update(result)
+
+        # 全局清场：本架构不再使用 importance 字段（综合精选已砍除）
+        for item in items:
+            item.pop("importance", None)
         return items

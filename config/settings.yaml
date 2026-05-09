@@ -18,10 +18,34 @@ reddit:
   min_score: 10
 
 # RSS 订阅源（通用采集器）
+# 注意：以下 3 家无官方 RSS，需 Phase 4 RSSHub 部署后通过 RSSHub 路由接入：
+#   - 机器之心（jiqizhixin.com/rss 已重定向至付费 data-service）
+#       RSSHub 候选：/jiqizhixin/news 或 /jiqizhixin/category/{category}
+#   - Anthropic News（anthropic.com/news 无 <link rel=alternate> 标签）
+#       RSSHub 候选：/anthropic/news
+#   - Meta AI Blog（ai.meta.com/blog/ 无官方 RSS）
+#       RSSHub 候选：/meta/ai-blog
 rss:
   feeds:
+    # 中文媒体
     - name: "量子位"
       url: "https://www.qbitai.com/feed"
+
+    # 海外厂商博客（一手发布源）
+    - name: "OpenAI"
+      url: "https://openai.com/blog/rss.xml"
+    - name: "Google DeepMind"
+      url: "https://deepmind.google/blog/rss.xml"
+
+    # 一线开发者 blog（编辑判定：信号密度抵得上多个聚合源）
+    - name: "Simon Willison"
+      url: "https://simonwillison.net/atom/everything/"
+    - name: "Lilian Weng"
+      url: "https://lilianweng.github.io/index.xml"
+    - name: "Eugene Yan"
+      url: "https://eugeneyan.com/rss/"
+    - name: "Chip Huyen"
+      url: "https://huyenchip.com/feed.xml"
   max_per_feed: 10
 
 # GitHub

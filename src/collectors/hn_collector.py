@@ -7,6 +7,7 @@ class HNCollector:
     def __init__(self, config: dict):
         self.cfg = config.get("hackernews", {})
         self.min_score = self.cfg.get("min_score", 50)
+        self.min_comments = self.cfg.get("min_comments", 150)
 
     def _get_item(self, sid: int, retries: int = 2) -> dict | None:
         """获取单个 item，带重试和异常保护"""
@@ -39,6 +40,9 @@ class HNCollector:
         for sid in ids:
             item = self._get_item(sid)
             if not item or item.get("score", 0) < self.min_score:
+                continue
+            # 评论数门槛：HN 评论树规模 = 讨论热度，AI 类话题没有讨论 = 噪声
+            if item.get("descendants", 0) < self.min_comments:
                 continue
             title = item.get("title", "").lower()
             # 排除词过滤

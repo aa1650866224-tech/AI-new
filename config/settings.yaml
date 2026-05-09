@@ -7,6 +7,7 @@ deepseek:
 # Hacker News
 hackernews:
   min_score: 50
+  min_comments: 150  # 评论数门槛：讨论热度 = 是否值得关注
   max_results: 30
 
 # Reddit

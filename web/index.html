@@ -3,157 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 新闻日报</title>
-    <link rel="stylesheet" href="style.css?v=23">
+    <title>AI 新闻日报 / DAILY DIGEST</title>
+
+    <!-- 字体（Wired 替代品组合）：
+         Display 衬体 → Playfair Display
+         Body 衬体    → Source Serif 4
+         UI 无衬     → Work Sans
+         Mono       → JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Work+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=25">
 </head>
 <body>
-    <div class="app-layout">
-        <!-- 侧边栏 -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <h1>🤖 AI<br>新闻日报</h1>
-                <p class="sidebar-sub">每日精选全球 AI 热门资讯</p>
+
+<!-- ========== 顶部 utility ribbon (Wired 黑色全 bleed 工具条) ========== -->
+<div class="utility-bar">
+    <div class="utility-inner">
+        <span class="utility-mark">DAILY · AI DIGEST</span>
+        <div class="utility-meta">
+            <label for="dateSelect" class="utility-meta-label">DATE</label>
+            <select id="dateSelect" class="utility-select"></select>
+            <button id="refreshBtn" class="utility-btn">REFRESH</button>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Masthead 报头 ========== -->
+<header class="masthead">
+    <div class="masthead-inner">
+        <h1 class="masthead-title">AI 新闻日报</h1>
+        <div class="masthead-sub">DAILY DIGEST · MULTI-SOURCE EDITORIAL FEED</div>
+        <p class="masthead-tag">每日精选全球 AI 热门资讯 · 多源采集 · 编辑精选 · 祛魅判定</p>
+    </div>
+</header>
+
+<!-- ========== 源切换 ribbon tab（mono caps，全 bleed 黑底） ========== -->
+<nav class="source-ribbon" id="sourceRibbon" aria-label="来源切换">
+    <div class="source-ribbon-inner">
+        <button class="ribbon-tab active" data-source="all">
+            <span class="ribbon-mono">DIGEST</span>
+            <span class="ribbon-cn">每日精选</span>
+            <span class="ribbon-count" id="count-all">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="GitHub">
+            <span class="ribbon-mono">GH&nbsp;RADAR</span>
+            <span class="ribbon-cn">GitHub 雷达</span>
+            <span class="ribbon-count" id="count-GitHub">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="X">
+            <span class="ribbon-mono">X</span>
+            <span class="ribbon-cn">X 热门</span>
+            <span class="ribbon-count" id="count-X">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="HackerNews">
+            <span class="ribbon-mono">HN</span>
+            <span class="ribbon-cn">Hacker News</span>
+            <span class="ribbon-count" id="count-HackerNews">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="Reddit">
+            <span class="ribbon-mono">RDT</span>
+            <span class="ribbon-cn">Reddit</span>
+            <span class="ribbon-count" id="count-Reddit">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="ProductHunt">
+            <span class="ribbon-mono">PH</span>
+            <span class="ribbon-cn">Product Hunt</span>
+            <span class="ribbon-count" id="count-ProductHunt">0</span>
+        </button>
+        <button class="ribbon-tab" data-source="量子位">
+            <span class="ribbon-mono">QBT</span>
+            <span class="ribbon-cn">量子位</span>
+            <span class="ribbon-count" id="count-量子位">0</span>
+        </button>
+    </div>
+</nav>
+
+<main class="page">
+
+    <!-- ========== 列表视图 ========== -->
+    <div id="listView">
+
+        <!-- Section 标题 ribbon -->
+        <section class="section-ribbon">
+            <span class="section-ribbon-label" id="sectionLabel">TOP STORIES</span>
+            <span class="section-ribbon-cn" id="sectionLabelCn">每日精选</span>
+            <span class="section-ribbon-count" id="statCount">0 STORIES</span>
+        </section>
+
+        <!-- 页面副标题（描述文案） -->
+        <p class="page-desc" id="pageDesc">基于多源数据的热度评分与聚类去重，精选每日 Top 资讯</p>
+
+        <!-- TODAY'S BRIEF 区块 (overview, 仅在 DIGEST 视图显示) -->
+        <section class="brief" id="overviewSection">
+            <div class="brief-kicker">TODAY&#39;S BRIEF · 今日 AI 速览</div>
+            <p class="brief-deck" id="overviewText">加载中…</p>
+        </section>
+
+        <!-- 筛选条 (非 GitHub 视图显示) -->
+        <div class="filter-bar" id="filtersRow">
+            <div class="filter-group">
+                <span class="filter-group-label">CATEGORY</span>
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="模型发布">模型发布</button>
+                <button class="filter-btn" data-filter="产品更新">产品更新</button>
+                <button class="filter-btn" data-filter="技术论文">技术论文</button>
+                <button class="filter-btn" data-filter="行业观点">行业观点</button>
+                <button class="filter-btn" data-filter="投资融资">投资融资</button>
+                <button class="filter-btn" data-filter="开源工具">开源工具</button>
             </div>
-
-            <nav class="source-nav">
-                <div class="source-group-label">每日必看</div>
-                <button class="source-btn active" data-source="all">
-                    <span class="source-icon">📋</span>
-                    <span class="source-name">每日精选</span>
-                    <span class="source-count" id="count-all">0</span>
-                </button>
-                <button class="source-btn" data-source="GitHub">
-                    <span class="source-icon">🐙</span>
-                    <span class="source-name">GitHub 雷达</span>
-                    <span class="source-count" id="count-GitHub">0</span>
-                </button>
-
-                <div class="source-group-label">其他</div>
-                <button class="source-btn" data-source="X">
-                    <span class="source-icon">🐦</span>
-                    <span class="source-name">X 热门</span>
-                    <span class="source-count" id="count-X">0</span>
-                </button>
-                <button class="source-btn" data-source="Reddit">
-                    <span class="source-icon">🔴</span>
-                    <span class="source-name">Reddit</span>
-                    <span class="source-count" id="count-Reddit">0</span>
-                </button>
-                <button class="source-btn" data-source="ProductHunt">
-                    <span class="source-icon">🚀</span>
-                    <span class="source-name">ProductHunt</span>
-                    <span class="source-count" id="count-ProductHunt">0</span>
-                </button>
-                <button class="source-btn" data-source="量子位">
-                    <span class="source-icon">🇨🇳</span>
-                    <span class="source-name">量子位</span>
-                    <span class="source-count" id="count-量子位">0</span>
-                </button>
-                <button class="source-btn" data-source="HackerNews">
-                    <span class="source-icon">🔶</span>
-                    <span class="source-name">HackerNews</span>
-                    <span class="source-count" id="count-HackerNews">0</span>
-                </button>
-            </nav>
-
-            <div class="sidebar-footer">
-                <p>数据来源：X / Reddit / ProductHunt / HN / GitHub / 量子位</p>
+            <div class="filter-group">
+                <span class="filter-group-label">PRIORITY</span>
+                <button class="imp-btn active" data-imp="all">All</button>
+                <button class="imp-btn imp-high" data-imp="重磅">重磅</button>
+                <button class="imp-btn imp-mid" data-imp="值得关注">值得关注</button>
+                <button class="imp-btn imp-low" data-imp="了解即可">了解即可</button>
             </div>
-        </aside>
+        </div>
 
-        <!-- 移动端菜单按钮 -->
-        <button class="menu-toggle" id="menuToggle">☰</button>
+        <!-- GitHub 雷达·4 档 verdict tab + 判据卡（点击切换 currentVerdict） -->
+        <section id="pitfallCriteria" class="verdict-criteria" style="display:none">
+            <div class="verdict-criteria-grid" id="pitfallCriteriaGrid"></div>
+        </section>
 
-        <!-- 主内容区 -->
-        <main class="main-content">
-            <!-- 列表视图 -->
-            <div id="listView">
-                <!-- 顶部控制栏 -->
-                <div class="top-bar">
-                    <div class="date-picker">
-                        <label for="dateSelect">📅</label>
-                        <select id="dateSelect"></select>
-                        <button id="refreshBtn">🔄</button>
-                    </div>
-                    <div class="filters-row" id="filtersRow">
-                        <div class="filters">
-                            <button class="filter-btn active" data-filter="all">全部</button>
-                            <button class="filter-btn" data-filter="模型发布">模型发布</button>
-                            <button class="filter-btn" data-filter="产品更新">产品更新</button>
-                            <button class="filter-btn" data-filter="技术论文">技术论文</button>
-                            <button class="filter-btn" data-filter="行业观点">行业观点</button>
-                            <button class="filter-btn" data-filter="投资融资">投资融资</button>
-                            <button class="filter-btn" data-filter="开源工具">开源工具</button>
-                        </div>
-                        <div class="importance-filter">
-                            <button class="imp-btn active" data-imp="all">全部</button>
-                            <button class="imp-btn" data-imp="重磅">🔴</button>
-                            <button class="imp-btn" data-imp="值得关注">🟡</button>
-                            <button class="imp-btn" data-imp="了解即可">🟢</button>
-                        </div>
-                    </div>
-                </div>
+        <!-- 新闻列表（编号 + hairline 分隔） -->
+        <section id="newsList" class="story-list" aria-label="新闻列表">
+            <!-- JS 渲染 -->
+        </section>
 
-                <!-- 页面标题 -->
-                <div class="page-header">
-                    <h2 id="pageTitle">📋 综合精选</h2>
-                    <p id="pageDesc">基于多源数据的热度评分与聚类去重，精选每日 Top 资讯</p>
-                    <span class="stat-badge" id="statCount">共 0 条</span>
-                </div>
+        <!-- 底部 GitHub 词典折叠区 -->
+        <details class="glossary-block" id="glossaryHome">
+            <summary>
+                <span class="glossary-summary-mono">GLOSSARY</span>
+                <span class="glossary-summary-cn">看不懂这些数字？(GitHub 术语小词典)</span>
+            </summary>
+            <div class="glossary-body" id="glossaryBodyHome"></div>
+        </details>
 
-                <!-- 综合页面 Overview -->
-                <section class="overview-card" id="overviewSection">
-                    <h3>📋 今日 AI 速览</h3>
-                    <p id="overviewText">加载中...</p>
-                </section>
-
-                <!-- 注：ID/类名 pitfallCriteria 沿用自 V1，避免追改 web/style.css。语义已变为"GitHub 雷达·4 档判据卡"。 -->
-                <section id="pitfallCriteria" class="pitfall-criteria" style="display:none">
-                    <div class="pitfall-criteria-head">
-                        <h3>🧭 这些标签是怎么判出来的？</h3>
-                        <p class="pitfall-criteria-sub">规则按优先级从上往下匹配，命中即停。阈值会随观察持续微调。</p>
-                    </div>
-                    <div class="pitfall-criteria-grid" id="pitfallCriteriaGrid"></div>
-                </section>
-
-                <!-- F8：GitHub 雷达子选项卡（4 verdict + 1 release） -->
-                <div id="verdictTabs" class="verdict-tabs" style="display:none">
-                    <button class="verdict-tab active" data-verdict="true_use">🟢 真在用 <span class="verdict-tab-count">0</span></button>
-                    <button class="verdict-tab" data-verdict="hype_only">🟡 看的多用的少 <span class="verdict-tab-count">0</span></button>
-                    <button class="verdict-tab" data-verdict="marketing">🔴 营销味重 <span class="verdict-tab-count">0</span></button>
-                    <button class="verdict-tab" data-verdict="abandoned">⚫ 已停摆 <span class="verdict-tab-count">0</span></button>
-                    <button class="verdict-tab" data-verdict="release">📦 Release <span class="verdict-tab-count">0</span></button>
-                </div>
-
-                <!-- 新闻列表 -->
-                <section id="newsList" class="news-list">
-                    <!-- 卡片由 JS 渲染 -->
-                </section>
-
-                <!-- GitHub 术语小词典（首页底部常驻折叠区） -->
-                <details class="glossary-block" id="glossaryHome">
-                    <summary>📖 看不懂这些数字？(GitHub 术语小词典)</summary>
-                    <div class="glossary-body" id="glossaryBodyHome"></div>
-                </details>
-
-                <footer class="main-footer">
-                    <p>生成时间：<span id="genTime">-</span></p>
-                </footer>
-            </div>
-
-            <!-- 详情页视图 -->
-            <div id="detailView" class="detail-view" style="display: none;">
-                <div class="detail-top">
-                    <button class="detail-back" id="detailBack">← 返回</button>
-                </div>
-                <div id="detailBody" class="detail-body"></div>
-            </div>
-        </main>
+        <footer class="page-footer">
+            <span class="page-footer-mark">DAILY · AI DIGEST</span>
+            <span class="page-footer-meta">GENERATED <span id="genTime">-</span></span>
+            <span class="page-footer-meta">SOURCES · X · HACKERNEWS · REDDIT · GITHUB · PRODUCTHUNT · QBITAI</span>
+        </footer>
     </div>
 
-    <!-- 移动端遮罩 -->
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <!-- ========== 详情页视图 ========== -->
+    <div id="detailView" class="detail-view" style="display:none">
+        <div class="detail-top">
+            <button class="detail-back" id="detailBack">← BACK</button>
+        </div>
+        <article id="detailBody" class="detail-body"></article>
+    </div>
 
-    <script src="app.js?v=23"></script>
+</main>
+
+<script src="app.js?v=25"></script>
 </body>
 </html>

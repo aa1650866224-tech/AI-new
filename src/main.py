@@ -25,10 +25,12 @@ from src.processors.article_fetcher import enrich_items
 from src.processors.translator import Translator
 from src.processors.github_verdict import annotate as annotate_github_verdict
 from src.processors import github_snapshot
+from src.processors import github_aggregate
 from src.storage.json_storage import JsonStorage
 
 
 SNAPSHOT_PATH_ABS = str(Path(__file__).resolve().parent.parent / "data" / "github_snapshots.jsonl")
+RADAR_PATH_ABS = str(Path(__file__).resolve().parent.parent / "data" / "github_radar.jsonl")
 
 
 def load_config() -> dict:
@@ -130,6 +132,19 @@ def main():
         src_list = [summarized_map[item["id"]] for item in by_source[src]]
         src_list.sort(key=lambda x: x.get("heat_score", 0), reverse=True)
         by_source[src] = src_list
+
+    # F9：GitHub 雷达 7 天滚动累积（独立存档，不读历史 daily JSON 避免旧规则污染）
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    today_github_full = list(by_source["GitHub"])  # 今日全集（用于 append，避免被 aggregate 截断后丢条目）
+    by_source["GitHub"] = github_aggregate.aggregate_7days(
+        today_github_full,
+        radar_path=RADAR_PATH_ABS,
+        today_str=today_str,
+        days=7,
+    )
+    appended = github_aggregate.append_today(RADAR_PATH_ABS, today_github_full, today_str)
+    pruned = github_aggregate.prune_old(RADAR_PATH_ABS, max_days=14)
+    print(f"[GitHubRadar] +{appended} today, pruned {pruned} >14d")
 
     # 7. 综合精选：从各来源中优先挑选重磅 → 值得关注 → 了解即可
     top_n = config.get("ranking", {}).get("daily_top_n", 15)

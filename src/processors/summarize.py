@@ -3,6 +3,18 @@ import json
 import requests
 
 
+def _extract_json_obj(raw: str) -> str:
+    """从 LLM 输出中提取 JSON 对象串：找第一个 { 到最后一个 }。
+    比 .replace('json','') 安全——不会吃掉 JSON 字符串值里的字面 'json'。
+    找不到时原样返回，交给 json.loads 自然抛错走 fallback。
+    """
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start != -1 and end > start:
+        return raw[start:end + 1]
+    return raw
+
+
 class Summarizer:
     def __init__(self, config: dict):
         self.cfg = config.get("deepseek", {})
@@ -45,7 +57,7 @@ class Summarizer:
 """
         raw = self._call([{"role": "user", "content": prompt}], temperature=0.3)
         try:
-            data = json.loads(raw.strip().strip("`").replace("json", "").strip())
+            data = json.loads(_extract_json_obj(raw))
         except Exception:
             data = {
                 "chinese_title": title[:50],
@@ -114,7 +126,7 @@ README 片段（已截取头部）：
 """
         raw = self._call([{"role": "user", "content": prompt}], temperature=0.3)
         try:
-            data = json.loads(raw.strip().strip("`").replace("json", "").strip())
+            data = json.loads(_extract_json_obj(raw))
         except Exception:
             data = {
                 "chinese_title": title[:50],

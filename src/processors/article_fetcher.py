@@ -2,9 +2,7 @@
 文章正文抓取模块
 使用 trafilatura 从原始 URL 抓取完整正文内容，带本地缓存和降级机制。
 对 arxiv 走官方 API 拿 abstract（不走 trafilatura）。
-对 GitHub 仓库主页走 GitHub API 拿 README。
 """
-import base64
 import hashlib
 import json
 import os
@@ -68,9 +66,7 @@ def _save_cache(url: str, text: str, cache_dir: Path):
 
 
 def should_fetch(url: str) -> bool:
-    """判断该 URL 是否值得抓取（用于常规 enrich：写入 content 字段）。
-    GitHub 仓库主页不走这条路径——README 单独抓后写到 _readme_hint，不污染 content。
-    """
+    """判断该 URL 是否值得抓取（用于常规 enrich：写入 content 字段）。"""
     if not url or not url.startswith("http"):
         return False
     domain = _get_domain(url)
@@ -144,132 +140,6 @@ def _clean_article_header(text: str, source_url: str) -> str:
     if cut_idx >= 0:
         return "\n\n".join(paragraphs[cut_idx + 1:]).lstrip()
     return text
-
-
-# ---- GitHub 仓库 README 抓取 ----
-
-# 形如 https://github.com/owner/repo 或 https://github.com/owner/repo/
-# 仅匹配仓库主页（路径恰好两段），release/issues/pulls 等子路径不会匹配
-_GITHUB_REPO_RE = re.compile(
-    r"^https?://github\.com/([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+?)/?(?:\?.*)?(?:#.*)?$",
-    re.I,
-)
-# github.com 顶级保留路径，第一段是这些时不视为 owner
-_GH_RESERVED_OWNERS = {
-    "sponsors", "explore", "settings", "marketplace", "topics", "trending",
-    "collections", "events", "notifications", "new", "login", "join",
-    "search", "about", "pricing", "features", "enterprise", "team",
-    "customer-stories", "site", "readme", "orgs",
-}
-
-
-def _github_repo_from_url(url: str):
-    """从 URL 抽出 (owner, repo)；仅当路径就是 owner/repo 时返回，否则 None"""
-    if not url:
-        return None
-    m = _GITHUB_REPO_RE.match(url)
-    if not m:
-        return None
-    owner = m.group(1)
-    repo = m.group(2)
-    if owner.lower() in _GH_RESERVED_OWNERS:
-        return None
-    if repo in {".git", ".github", ""}:
-        return None
-    return owner, repo
-
-
-def _abs_url_join(prefix: str, src: str) -> str:
-    src = src.strip()
-    if src.startswith(("http://", "https://", "data:", "mailto:", "#")):
-        return src
-    if src.startswith("/"):
-        src = src.lstrip("/")
-    elif src.startswith("./"):
-        src = src[2:]
-    return prefix + src
-
-
-def _rewrite_github_relative_paths(md: str, raw_prefix: str, blob_prefix: str) -> str:
-    """把 README 中的相对图片/链接路径转成绝对 URL"""
-    # markdown 图片：![alt](src)
-    def _md_img(m):
-        alt, src = m.group(1), m.group(2).strip()
-        if src.startswith(("http://", "https://", "data:")):
-            return m.group(0)
-        return f"![{alt}]({_abs_url_join(raw_prefix, src)})"
-    md = re.sub(r"!\[([^\]]*)\]\(([^)\s]+)\)", _md_img, md)
-
-    # markdown 链接：[text](href)，排除前面带 ! 的图片
-    def _md_link(m):
-        text, href = m.group(1), m.group(2).strip()
-        if href.startswith(("http://", "https://", "mailto:", "#", "data:")):
-            return m.group(0)
-        return f"[{text}]({_abs_url_join(blob_prefix, href)})"
-    md = re.sub(r"(?<!\!)\[([^\]]+)\]\(([^)\s]+)\)", _md_link, md)
-
-    # HTML <img src="..."> 标签（README 里很常见）
-    def _html_img(m):
-        full = m.group(0)
-        src = m.group(1)
-        if src.startswith(("http://", "https://", "data:")):
-            return full
-        return full.replace(src, _abs_url_join(raw_prefix, src), 1)
-    md = re.sub(r'<img\s+[^>]*?src="([^"]+)"', _html_img, md, flags=re.I)
-
-    return md
-
-
-def _fetch_github_readme(url: str, timeout: int = 15) -> str | None:
-    """通过 GitHub API 获取仓库 README，返回带绝对路径的 markdown"""
-    parsed = _github_repo_from_url(url)
-    if not parsed:
-        return None
-    owner, repo = parsed
-
-    api = f"https://api.github.com/repos/{owner}/{repo}/readme"
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "ai-news-digest",
-    }
-    token = os.getenv("GH_PAT") or os.getenv("GITHUB_TOKEN", "")
-    if token and not token.startswith("$"):
-        headers["Authorization"] = f"token {token}"
-
-    try:
-        resp = requests.get(api, headers=headers, timeout=timeout)
-        if resp.status_code != 200:
-            return None
-        data = resp.json()
-    except Exception:
-        return None
-
-    encoded = data.get("content", "") or ""
-    if data.get("encoding") != "base64" or not encoded:
-        return None
-    try:
-        md = base64.b64decode(encoded).decode("utf-8", errors="replace")
-    except Exception:
-        return None
-
-    if not md or len(md.strip()) < 20:
-        return None
-
-    # 推断 raw 前缀（用于图片）和 blob 前缀（用于链接）
-    download_url = data.get("download_url", "") or ""
-    raw_prefix = ""
-    blob_prefix = ""
-    if download_url.startswith("https://raw.githubusercontent.com/"):
-        raw_prefix = download_url.rsplit("/", 1)[0] + "/"
-        path_after_host = download_url[len("https://raw.githubusercontent.com/"):]
-        parts = path_after_host.split("/", 3)
-        if len(parts) >= 3:
-            blob_prefix = f"https://github.com/{parts[0]}/{parts[1]}/blob/{parts[2]}/"
-
-    if raw_prefix:
-        md = _rewrite_github_relative_paths(md, raw_prefix, blob_prefix or raw_prefix)
-
-    return md.strip()
 
 
 # arxiv URL 形如：
@@ -421,27 +291,13 @@ def enrich_items(items: list, cache_dir: Path | None = None) -> list:
     """
     对 items 列表批量抓取原文正文，填充到 content 字段。
     如果抓取失败，保留原有 content。
-
-    GitHub 仓库主页特殊处理：抓 README 但不写 content，而是截断后写到 _readme_hint，
-    供 summarizer 生成"项目解决什么问题"的中文摘要素材使用，不进入翻译流程。
     """
     success = 0
     skip = 0
     fail = 0
-    gh_readme_hits = 0
 
     for item in items:
         url = item.get("url", "")
-
-        # GitHub 仓库主页：抓 README → 写 _readme_hint（不动 content，不参与翻译）
-        if item.get("source") == "GitHub" and _github_repo_from_url(url):
-            readme = _fetch_github_readme(url)
-            if readme:
-                # README 头部摘要素材，足以让 LLM 看出项目定位即可，避免 prompt 过长
-                item["_readme_hint"] = readme[:3000]
-                gh_readme_hits += 1
-            skip += 1
-            continue
 
         original_content = item.get("content", "") or ""
 
@@ -464,7 +320,6 @@ def enrich_items(items: list, cache_dir: Path | None = None) -> list:
 
     total = len(items)
     print(
-        f"[ArticleFetcher] total={total} | success={success} | skip={skip} | fail={fail} "
-        f"| gh_readme={gh_readme_hits}"
+        f"[ArticleFetcher] total={total} | success={success} | skip={skip} | fail={fail}"
     )
     return items

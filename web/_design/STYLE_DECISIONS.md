@@ -163,3 +163,33 @@ Wired 主张「除 #057dbc 外禁止彩色」，但本项目有 4 档强语义 v
 ## 备份位置
 
 重构前的原始版本在 `web/_backup_pre_wired/`（index.html / style.css / app.js）。如需对比"前 Wired 版"，看那里。
+
+
+---
+
+## V3：aihot 式卡片流（2026-05-18）
+
+### 设计源头
+
+参考 [aihot.virxact.com](https://aihot.virxact.com/) 的"卡片即终点、点击跳原文"形态。详细设计 spec：`docs/superpowers/specs/2026-05-18-aihot式卡片重设计-design.md`。
+
+### 卡片 6 区域结构
+
+- Zone 1：来源 / 精选 N（黑底黄数字）
+- Zone 2：标题（X 源不渲染）
+- Zone 3：中段事实层 130-170 字
+- Zone 3a：X 媒体网格（预留，本轮无数据）
+- Zone 4：标签 ×≤4
+- Zone 5：hr 物理分隔
+- Zone 6：推荐理由（淡蓝底 + 左蓝线 + 衬体斜体）
+
+### 关键设计纪律（V3 新增）
+
+- **卡片整体可点击跳原文**，不再有详情页
+- **推荐理由从中间 pull-quote 移到底部**，避免打断事实阅读
+- **精选 N 数字**用 oldstyle figures 时会和字母错位，全局 `font-feature-settings: "lnum" 1, "tnum" 1` 强制 lining figures
+- **masthead 标题** 从 "AI 新闻日报" 改成 "AI-NEWS"（极简、英文 mono 气质）
+
+### 砍除的样式
+
+`.story-*` / `.detail-*` / `.brief-*` / `.verdict-*` / `.pitfall-*` / `.glossary-*` 这 6 个前缀全砍。

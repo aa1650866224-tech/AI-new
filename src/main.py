@@ -13,7 +13,6 @@ load_dotenv(PROJECT_ROOT / ".env")
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.collectors.hn_collector import HNCollector
-from src.collectors.github_collector import GitHubCollector
 from src.collectors.reddit_collector import RedditCollector
 from src.collectors.rss_collector import RSSCollector
 from src.collectors.hf_collector import HFCollector
@@ -21,15 +20,8 @@ from src.processors.dedup import url_dedup, content_dedup, cluster_dedup
 from src.processors.ranker import Ranker
 from src.processors.summarize import Summarizer
 from src.processors.article_fetcher import enrich_items
-from src.processors.github_verdict import annotate as annotate_github_verdict
 from src.processors.section_mapper import assign_sections, split_by_section
-from src.processors import github_snapshot
-from src.processors import github_aggregate
 from src.storage.json_storage import JsonStorage
-
-
-SNAPSHOT_PATH_ABS = str(Path(__file__).resolve().parent.parent / "data" / "github_snapshots.jsonl")
-RADAR_PATH_ABS = str(Path(__file__).resolve().parent.parent / "data" / "github_radar.jsonl")
 
 
 def load_config() -> dict:
@@ -56,7 +48,6 @@ def main():
         ("Hacker News", HNCollector),
         ("Reddit", RedditCollector),
         ("RSS feeds", RSSCollector),
-        ("GitHub", GitHubCollector),
         ("HuggingFace", HFCollector),
     ]
     keywords_cfg = config.get("keywords", {})
@@ -93,11 +84,6 @@ def main():
     print(f"[{total_steps + 1}/{total_steps + 2}] Fetching full article text...")
     items = enrich_items(items)
 
-    # 4.5 GitHub 避坑标签判定（在 _readme_hint 还在 item 上时跑，让标签也能进 summarize prompt）
-    # F6：先加载最近 7 天历史快照，主判据（marketing 路径 A）需要它
-    history = github_snapshot.load_recent_snapshots(SNAPSHOT_PATH_ABS, days=7)
-    items = annotate_github_verdict(items, history=history)
-
     # 5. 板块映射（按 source 给每条打 section 字段）
     items = assign_sections(items)
 
@@ -119,19 +105,6 @@ def main():
     print(f"      -> AI summarizing {len(items_to_summarize)} items...")
     summarizer = Summarizer(config)
     summarizer.process_batch(items_to_summarize)  # in-place 修改，by_section 内 dict 同步更新
-
-    # 9. GitHub 雷达 7 天滚动累积（独立处理，覆盖 by_section["github"]）
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    today_github_full = list(by_section["github"])  # 今日全集，用于 append（避免被 aggregate 截断后丢条目）
-    by_section["github"] = github_aggregate.aggregate_7days(
-        today_github_full,
-        radar_path=RADAR_PATH_ABS,
-        today_str=today_str,
-        days=7,
-    )
-    appended = github_aggregate.append_today(RADAR_PATH_ABS, today_github_full, today_str)
-    pruned = github_aggregate.prune_old(RADAR_PATH_ABS, max_days=14)
-    print(f"[GitHubRadar] +{appended} today, pruned {pruned} >14d")
 
     # 10. 防御性清场：移除残留的 importance 和临时字段
     # （summarize.process_batch 已清 importance，这里是双重保险，且清掉 _readme_hint）
@@ -172,16 +145,6 @@ def main():
         print(f"Updated index.json with {len(files)} dates.")
     except Exception as e:
         print(f"Index update warning: {e}")
-
-    # 13. F6：追加今日 GitHub trending 快照 + 清理 90 天前旧记录
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    github_items_for_snapshot = [
-        it for it in items
-        if it.get("source") == "GitHub" and not (it.get("id") or "").startswith("gh_rel_")
-    ]
-    github_snapshot.append_today_snapshot(SNAPSHOT_PATH_ABS, github_items_for_snapshot, today_str)
-    removed = github_snapshot.prune_old_snapshots(SNAPSHOT_PATH_ABS, max_days=90)
-    print(f"[Snapshot] appended {len(github_items_for_snapshot)} items, pruned {removed} old rows")
 
     print("Done.")
 

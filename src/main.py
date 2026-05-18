@@ -21,7 +21,6 @@ from src.processors.dedup import url_dedup, content_dedup, cluster_dedup
 from src.processors.ranker import Ranker
 from src.processors.summarize import Summarizer
 from src.processors.article_fetcher import enrich_items
-from src.processors.translator import Translator
 from src.processors.github_verdict import annotate as annotate_github_verdict
 from src.processors.section_mapper import assign_sections, split_by_section
 from src.processors import github_snapshot
@@ -99,12 +98,7 @@ def main():
     history = github_snapshot.load_recent_snapshots(SNAPSHOT_PATH_ABS, days=7)
     items = annotate_github_verdict(items, history=history)
 
-    # 5. 翻译英文正文为中文（长文分段翻译）
-    print(f"[{total_steps + 2}/{total_steps + 2}] Translating articles to Chinese...")
-    translator = Translator(config)
-    items = translator.process_batch(items)
-
-    # 6. 板块映射（按 source 给每条打 section 字段）
+    # 5. 板块映射（按 source 给每条打 section 字段）
     items = assign_sections(items)
 
     # 7. 板块切分 + cap（节约后续 AI 摘要的 token——cap 之外的不摘要）

@@ -106,22 +106,32 @@ def main():
     summarizer = Summarizer(config)
     summarizer.process_batch(items_to_summarize)  # in-place 修改，by_section 内 dict 同步更新
 
-    # 10. 防御性清场：移除残留的 importance 和临时字段
-    # （summarize.process_batch 已清 importance，这里是双重保险，且清掉 _readme_hint）
+    # 10. 防御性清场：移除所有 V2/V1 残留字段、临时字段、本轮砍除字段
+    DROP_FIELDS = (
+        "content",                # 抓回的正文只给提示词用，不入库
+        "chinese_content",        # translator 砍了
+        "importance",             # V1 遗留
+        "original_excerpt",       # V2 砍
+        "_readme_hint",           # GitHub 临时字段
+        "_section_hint",          # section_mapper 临时字段
+        "_translation_content",   # translator 临时字段
+        "verdict_tag",            # 雷达留空
+        "verdict_label",
+        "verdict_explain",
+        "verdict_analogy",
+        "verdict",                # LLM 输出的子对象
+        "repo_card",              # V1 遗留
+        "radar_date",             # 雷达滚动用
+    )
     for section_items in by_section.values():
         for item in section_items:
-            item.pop("importance", None)
-            item.pop("_readme_hint", None)
+            for k in DROP_FIELDS:
+                item.pop(k, None)
 
-    # 11. 日报总览（用 morning + discussion 前 10 条做素材，最能代表当日重要新闻）
-    overview_pool = (by_section["morning"] + by_section["discussion"])[:10]
-    overview = summarizer.daily_overview(overview_pool)
-
-    # 12. 组装日报（新结构 - by_section 替代 items + by_source）
+    # 11. 组装日报（V3 结构：纯卡片流，无 overview）
     daily_digest = {
         "date": datetime.now().strftime("%Y-%m-%d"),
         "generated_at": datetime.now().isoformat(),
-        "overview": overview,
         "by_section": by_section,
     }
 

@@ -59,4 +59,27 @@ class Ranker:
     def rank(self, items: list) -> list:
         for item in items:
             item["heat_score"] = self.score(item)
-        return sorted(items, key=lambda x: x["heat_score"], reverse=True)
+        sorted_items = sorted(items, key=lambda x: x["heat_score"], reverse=True)
+        normalize_score_band(sorted_items)
+        return sorted_items
+
+
+def normalize_score_band(items: list, floor: int = 55, ceiling: int = 95) -> None:
+    """把 heat_score 映射到 floor-ceiling 区间，in-place 写入 item['精选N']。
+
+    用最大值线性归一化（不是 z 分数）——
+    aihot 实测分布在 55-85，我们用 55-95 留点上调空间。
+    跨板块全局归一化（不分 morning/discussion 各算各的）。
+    """
+    if not items:
+        return
+    max_score = max((it.get('heat_score', 0) or 0) for it in items)
+    if max_score <= 0:
+        # 所有条目热度都是 0 或负——直接给一个保底分，避免除零和"全员 ceiling"
+        for it in items:
+            it['精选N'] = floor
+        return
+    for it in items:
+        raw = it.get('heat_score', 0) or 0
+        normalized = floor + (ceiling - floor) * (raw / max_score)
+        it['精选N'] = round(normalized)

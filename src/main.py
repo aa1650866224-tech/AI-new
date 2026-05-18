@@ -17,7 +17,7 @@ from src.collectors.reddit_collector import RedditCollector
 from src.collectors.rss_collector import RSSCollector
 from src.collectors.hf_collector import HFCollector
 from src.processors.dedup import url_dedup, content_dedup, cluster_dedup
-from src.processors.ranker import Ranker
+from src.processors.ranker import Ranker, normalize_score_band
 from src.processors.summarize import Summarizer
 from src.processors.article_fetcher import enrich_items
 from src.processors.section_mapper import assign_sections, split_by_section
@@ -97,6 +97,10 @@ def main():
     by_section = split_by_section(items, limits=section_limits)
     for s, lst in by_section.items():
         print(f"      -> {s}: {len(lst)} items (cap={section_limits.get(s, '-')})")
+
+    # 7.5 精选 N 分板块归一化（每板块各算各的——单位不可比，跨板块归一化会让 stars 量级碾压 likes）
+    for section_items in by_section.values():
+        normalize_score_band(section_items)
 
     # 8. AI 摘要（只对板块切分后的 items 做，节约 LLM 调用）
     items_to_summarize = []

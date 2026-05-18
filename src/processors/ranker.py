@@ -59,9 +59,7 @@ class Ranker:
     def rank(self, items: list) -> list:
         for item in items:
             item["heat_score"] = self.score(item)
-        sorted_items = sorted(items, key=lambda x: x["heat_score"], reverse=True)
-        normalize_score_band(sorted_items)
-        return sorted_items
+        return sorted(items, key=lambda x: x["heat_score"], reverse=True)
 
 
 def normalize_score_band(items: list, floor: int = 55, ceiling: int = 95) -> None:
@@ -69,7 +67,8 @@ def normalize_score_band(items: list, floor: int = 55, ceiling: int = 95) -> Non
 
     用最大值线性归一化（不是 z 分数）——
     aihot 实测分布在 55-85，我们用 55-95 留点上调空间。
-    跨板块全局归一化（不分 morning/discussion 各算各的）。
+    分板块各算各的：morning 的 likes / discussion 的 HN points / weekend 的 stars 单位不同，
+    跨板块归一化会让单位最大的板块碾压其他。调用方应对每个 by_section[k] 单独调一次。
     """
     if not items:
         return

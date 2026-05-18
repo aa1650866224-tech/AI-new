@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=Work+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="style.css?v=27">
+    <link rel="stylesheet" href="style.css?v=v3">
 </head>
 <body>
 
@@ -23,8 +23,6 @@
     <div class="utility-inner">
         <span class="utility-mark">DAILY · AI DIGEST</span>
         <div class="utility-meta">
-            <label for="dateSelect" class="utility-meta-label">DATE</label>
-            <select id="dateSelect" class="utility-select"></select>
             <button id="refreshBtn" class="utility-btn">REFRESH</button>
         </div>
     </div>
@@ -33,7 +31,7 @@
 <!-- ========== Masthead 报头 ========== -->
 <header class="masthead">
     <div class="masthead-inner">
-        <h1 class="masthead-title">AI 新闻日报</h1>
+        <h1 class="masthead-title">AI-NEWS</h1>
         <div class="masthead-sub">DAILY DIGEST · MULTI-SOURCE EDITORIAL FEED</div>
         <p class="masthead-tag">每日精选全球 AI 热门资讯 · 多源采集 · 编辑精选 · 祛魅判定</p>
     </div>
@@ -80,12 +78,6 @@
         <!-- 页面副标题（描述文案） -->
         <p class="page-desc" id="pageDesc">基于多源数据的热度评分与聚类去重，精选每日 Top 资讯</p>
 
-        <!-- TODAY'S BRIEF 区块 (overview, 仅在 DIGEST 视图显示) -->
-        <section class="brief" id="overviewSection">
-            <div class="brief-kicker">TODAY&#39;S BRIEF · 今日 AI 速览</div>
-            <p class="brief-deck" id="overviewText">加载中…</p>
-        </section>
-
         <!-- 筛选条 (非 GitHub 视图显示) -->
         <div class="filter-bar" id="filtersRow">
             <div class="filter-group">
@@ -101,24 +93,10 @@
             <!-- PRIORITY 筛选条已删除（importance 字段在 v2 架构中弃用） -->
         </div>
 
-        <!-- GitHub 雷达·4 档 verdict tab + 判据卡（点击切换 currentVerdict） -->
-        <section id="pitfallCriteria" class="verdict-criteria" style="display:none">
-            <div class="verdict-criteria-grid" id="pitfallCriteriaGrid"></div>
-        </section>
-
         <!-- 新闻列表（编号 + hairline 分隔） -->
-        <section id="newsList" class="story-list" aria-label="新闻列表">
+        <section id="newsList" class="v3-card-list" aria-label="新闻列表">
             <!-- JS 渲染 -->
         </section>
-
-        <!-- 底部 GitHub 词典折叠区 -->
-        <details class="glossary-block" id="glossaryHome">
-            <summary>
-                <span class="glossary-summary-mono">GLOSSARY</span>
-                <span class="glossary-summary-cn">看不懂这些数字？(GitHub 术语小词典)</span>
-            </summary>
-            <div class="glossary-body" id="glossaryBodyHome"></div>
-        </details>
 
         <footer class="page-footer">
             <span class="page-footer-mark">DAILY · AI DIGEST</span>
@@ -127,16 +105,9 @@
         </footer>
     </div>
 
-    <!-- ========== 详情页视图 ========== -->
-    <div id="detailView" class="detail-view" style="display:none">
-        <div class="detail-top">
-            <button class="detail-back" id="detailBack">← BACK</button>
-        </div>
-        <article id="detailBody" class="detail-body"></article>
-    </div>
 
 </main>
 
-<script src="app.js?v=26"></script>
+<script src="app.js?v=v3"></script>
 </body>
 </html>
